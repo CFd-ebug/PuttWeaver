@@ -1,0 +1,19 @@
+{
+  "name": "puttweaver",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A projected putt-putt hole: mini games shown on a white sheet, played with a yellow golf ball that a camera tracks.",
+  "scripts": {
+    "build": "node scripts/build.js",
+    "check": "node scripts/build.js --check",
+    "serve": "node scripts/serve.js",
+    "test": "node scripts/build.js && node tests/run.js",
+    "test:full": "node scripts/build.js && node tests/run.js --full"
+  },
+  "devDependencies": {
+    "playwright": "1.56.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

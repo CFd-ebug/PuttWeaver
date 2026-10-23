@@ -1,0 +1,227 @@
+<div class="app">
+  <header class="bar">
+    <div class="brand">
+      <div class="mark" aria-hidden="true"></div>
+      <div>
+        <h1>Projector Putt Lab</h1>
+        <p>Playtest the projected mini games before the rig is built</p>
+      </div>
+    </div>
+    <nav class="games" id="games" aria-label="Games"></nav>
+  </header>
+
+  <main class="main">
+    <section class="stage" id="stageSec" aria-label="Simulated playing surface">
+      <div id="stageBox"><canvas id="stage" tabindex="0" aria-label="Playing surface. Drag back and release to putt, or use the arrow keys and Space."></canvas></div>
+      <div class="stage-foot">
+        <span id="hint" aria-live="polite">Drag back from anywhere on the stage, then let go to putt.</span>
+        <span class="mono" id="shotInfo"></span>
+        <span class="keys">Keyboard: click the stage, then ← → to aim (Shift for 5°), ↑ ↓ for power, Space to putt, Enter to continue.</span>
+        <span class="foot-btns"><button class="btn small proj-btn" id="btnLive" type="button">Live camera</button><button class="btn small proj-btn" id="btnProj" type="button">Projector mode</button></span>
+      </div>
+      <div class="proj-ui" id="projUi" hidden>
+        <span class="pu-hint">Drag to putt · Enter next</span>
+        <button class="btn small" id="pbGame" type="button" title="Next game (G)">Next game</button>
+        <button class="btn small" id="pbTest" type="button" title="Test card (T)">Test card</button>
+        <button class="btn small" id="btnTee" type="button" title="Tee (V)">Hide tee</button>
+        <button class="btn small" id="pbPanel" type="button" title="Live camera panel (L)">Live panel</button>
+        <button class="btn small" id="pbTrack" type="button" hidden>Start tracking</button>
+        <button class="btn small" id="pbSkip" type="button" title="Skip to the next round (N)" hidden>Skip round</button>
+        <button class="btn small" id="pbFps" type="button" title="Frame rate overlay (F)" aria-pressed="false">FPS</button>
+        <button class="btn small" id="pbDbg" type="button" title="Debug overlay (D)" aria-pressed="false">Debug</button>
+        <button class="btn small" id="btnProjExit" type="button" title="Exit (Esc)">Exit</button>
+      </div>
+      <video class="cam-video" id="camVideo" playsinline muted></video>
+      <div class="pin-handles" id="pinHandles" hidden></div>
+      <div class="live-panel" id="livePanel" hidden>
+        <div class="lp-head"><h2>Live ball tracking</h2><button class="btn small" id="lpClose" type="button">Hide (L)</button></div>
+        <div id="lpStatus"></div>
+        <canvas id="lpPreview" aria-label="Camera view. Tap the ball to sample its color."></canvas>
+        <p class="lp-note">Camera view. Tap the ball here to sample its color.</p>
+        <section class="lp-sec"><h3>1 · Camera</h3>
+          <div class="lp-row">
+            <select id="lpSource" aria-label="Video source"><option value="camera">Phone camera</option><option value="sim">Simulated camera (desk test)</option><option value="file">Recorded clip…</option></select>
+            <button class="btn primary" id="lpStart" type="button">Start</button><button class="btn" id="lpStop" type="button">Stop</button>
+          </div>
+          <div class="lp-row">
+            <select id="lpDevice" aria-label="Camera"><option value="">Rear camera (default)</option></select>
+            <select id="lpRes" aria-label="Camera resolution"><option value="640">640 × 480</option><option value="1280">1280 × 720</option><option value="1920">1920 × 1080</option></select>
+            <button class="btn" id="lpLock" type="button">Lock exposure</button>
+          </div>
+          <div id="lpCamCtl"></div>
+          <input type="file" id="lpFile" accept="video/*" hidden>
+          <p class="lp-note" id="lpCamNote"></p>
+        </section>
+        <section class="lp-sec"><h3>2 · Fit the projection (angled projector)</h3>
+          <p class="lp-note">Skip this if the projector points straight at the sheet. Otherwise drag the four corners until the test card’s squares are true squares on the floor.</p>
+          <div class="lp-row"><button class="btn" id="lpFit" type="button">Adjust corners</button><button class="btn" id="lpRot" type="button">Rotate 180°</button><button class="btn" id="lpFitReset" type="button">Reset</button></div>
+        </section>
+        <section class="lp-sec"><h3>3 · Calibrate</h3>
+          <div class="lp-row"><button class="btn primary" id="lpCal" type="button">Calibrate</button><button class="btn" id="lpCheck" type="button">Check accuracy</button><button class="btn" id="lpDelay" type="button">Measure delay</button></div>
+          <p class="lp-note" id="lpCalNote">Projects 13 dots one at a time, then checks itself with 6 more. Takes about 20 seconds; keep the camera still.</p>
+        </section>
+        <section class="lp-sec"><h3>4 · Ball</h3>
+          <div class="lp-row"><button class="btn primary" id="lpSample" type="button">Sample ball</button><button class="btn" id="lpSweep" type="button">Background sweep</button></div>
+          <p class="lp-note" id="lpColorNote">Put the ball in the ring that appears on the right of the sheet, then press Sample ball.</p>
+          <div class="lp-row"><label class="flabel" for="lpMethod">Detection</label><select id="lpMethod"><option value="ref">Compare to empty sheet</option><option value="hue">Color only</option></select></div>
+          <p class="lp-note">Compare to empty sheet photographs the bare sheet at the start of each round, then looks for something that soaks up blue light the way a yellow ball does. Skin, hair and shadows don’t, so hands and heads are ignored. Lower the blue limit if anything else gets picked up; raise it if the ball is missed.</p>
+          <div id="lpCut-host"></div>
+          <details class="lp-more"><summary>Color-only settings</summary><div id="lpHue-host"></div><div id="lpSat-host"></div><div id="lpVal-host"></div></details>
+        </section>
+        <section class="lp-sec"><h3>5 · Play</h3>
+          <div id="lpRestT-host"></div><div id="lpRestR-host"></div><div id="lpClear-host"></div><div id="lpGuard-host"></div>
+          <p class="lp-note">Movement guard: while more than this share of the sheet is changing (someone walking on it, a hand reaching in), no shot can start and the next round waits. The frame-rate overlay (F) shows the live figure.</p>
+          <div class="lp-row"><label class="flabel" for="lpZone">Shot starts</label><select id="lpZone"><option value="tee">Rolling in from the tee edge</option><option value="anywhere">Anywhere it moves</option></select>
+            <label class="flabel" for="lpProc">Detail</label><select id="lpProc"><option value="320">Fast (320)</option><option value="480">Balanced (480)</option><option value="640">Fine (640)</option></select></div>
+          <div class="lp-row"><button class="btn primary" id="lpPlay" type="button">Start tracking</button></div>
+          <p class="lp-note">After each shot the player walks in and picks up the ball. Once the sheet has been clear for a moment, the next round starts by itself. N forces the next round; C cancels a false start.</p>
+        </section>
+        <section class="lp-sec"><h3>Debug</h3>
+          <div class="lp-row"><label class="check"><input type="checkbox" id="lpDbg"> Debug overlay (D)</label><button class="btn" id="lpDbgMove" type="button">Move overlay</button><label class="check"><input type="checkbox" id="lpMark"> Tracking marker</label><label class="check"><input type="checkbox" id="lpFps"> Frame rate (F)</label></div>
+          <div class="lp-row"><button class="btn" id="lpRec" type="button">Record 15 s clip</button><button class="btn" id="lpCopy" type="button">Copy report</button><button class="btn" id="lpSave" type="button">Save report</button></div>
+          <p class="lp-note" id="lpDbgNote"></p>
+          <textarea id="lpReportText" hidden readonly aria-label="Debug report"></textarea>
+          <ol class="lp-log" id="lpLog"></ol>
+        </section>
+      </div>
+    </section>
+
+    <aside class="panel">
+      <section class="card">
+        <div class="now-head"><h2 id="gTitle">Map Quest</h2><span class="tag" id="gReads">Reads: where it stops</span></div>
+        <p class="how" id="gHow"></p>
+        <div class="opts" id="gOpts" hidden></div>
+        <div class="hole" id="gHole"></div>
+        <div class="now-foot"><span class="status" id="gStatus"></span><button class="btn small" id="btnRestart" type="button">Restart game</button></div>
+      </section>
+
+      <section class="card result" id="result" hidden aria-live="polite">
+        <p class="eyebrow" id="rEyebrow">Last shot</p>
+        <p class="r-title" id="rTitle"></p>
+        <p class="r-detail" id="rDetail"></p>
+        <div class="rate-row" id="rRate" hidden><span class="flabel">Rate this game</span><span id="rRateStars"></span></div>
+        <button class="btn primary" id="btnNext" type="button">Continue</button>
+      </section>
+
+      <section class="card">
+        <h3>Scorecard</h3>
+        <div class="sc-wrap" id="gCard"></div>
+      </section>
+
+      <section class="card">
+        <div class="card-head"><h3>Playtest log</h3><button class="btn small" id="btnClearLog" type="button">Clear log</button></div>
+        <div class="sc-wrap" id="logBox"></div>
+      </section>
+
+      <section class="card">
+        <div class="card-head"><h3>Game rankings</h3><button class="btn small" id="btnExport" type="button">Export rankings</button></div>
+        <ul class="rank-list" id="rankList"></ul>
+      </section>
+
+      <details class="card" id="notes" open>
+        <summary>Design notes for this game</summary>
+        <div id="gNotes"></div>
+      </details>
+
+      <details class="card" id="rig">
+        <summary><span>Rig settings</span><span class="sum-note" id="rigSummary"></span></summary>
+        <div class="rig-grid">
+          <div class="two">
+            <div class="field">
+              <label class="flabel" for="setWidth">Projected sheet</label>
+              <select id="setWidth">
+                <option value="5">5 × 2.8 ft</option>
+                <option value="6">6 × 3.4 ft</option>
+                <option value="7">7 × 3.9 ft</option>
+                <option value="8">8 × 4.5 ft</option>
+                <option value="9">9 × 5.1 ft</option>
+                <option value="10">10 × 5.6 ft</option>
+                <option value="11">11 × 6.2 ft</option>
+                <option value="12">12 × 6.75 ft</option>
+              </select>
+            </div>
+            <div class="field">
+              <span class="flabel" id="lblRails">Edges</span>
+              <div class="seg" role="radiogroup" aria-labelledby="lblRails">
+                <label><input type="radio" name="rails" value="1" id="railsOn"><span>Rails</span></label>
+                <label><input type="radio" name="rails" value="0" id="railsOff"><span>Open</span></label>
+              </div>
+            </div>
+          </div>
+          <div class="field">
+            <span class="flabel" id="lblSpeed">Surface speed</span>
+            <div class="seg" role="radiogroup" aria-labelledby="lblSpeed">
+              <label><input type="radio" name="speed" value="slow" id="spSlow"><span>Slow · 8</span></label>
+              <label><input type="radio" name="speed" value="medium" id="spMed"><span>Medium · 11</span></label>
+              <label><input type="radio" name="speed" value="fast" id="spFast"><span>Fast · 15</span></label>
+            </div>
+            <p class="help">Stimp rating: how many feet a ball rolls after leaving a stimpmeter. Putting turf runs about 10. Smooth plastic over a hard floor will run faster, so measure yours.</p>
+          </div>
+          <div class="field">
+            <span class="flabel" id="lblFlat">Sheet flatness</span>
+            <div class="seg" role="radiogroup" aria-labelledby="lblFlat">
+              <label><input type="radio" name="flat" value="flat" id="flFlat"><span>Flat</span></label>
+              <label><input type="radio" name="flat" value="slight" id="flSlight"><span>Slight wrinkles</span></label>
+              <label><input type="radio" name="flat" value="wavy" id="flWavy"><span>Wavy</span></label>
+            </div>
+            <p class="help">Adds hidden bumps and a small floor tilt, so slow balls drift near the end of a roll. Each change lays a new random sheet.</p>
+          </div>
+          <div class="field">
+            <label class="flabel" for="setSkill">Player</label>
+            <select id="setSkill">
+              <option value="perfect">Perfect (no error, for testing)</option>
+              <option value="pro">Strong putter (±4% distance, ±0.6° aim)</option>
+              <option value="average">Office average (±10% distance, ±1.5° aim)</option>
+              <option value="beginner">First time holding a putter (±18%, ±3°)</option>
+            </select>
+            <p class="help">A mouse is far more precise than a putter, so every putt gets random aim and distance error.</p>
+          </div>
+          <div class="two">
+            <div class="field">
+              <span class="flabel" id="lblFps">Camera frame rate</span>
+              <div class="seg" role="radiogroup" aria-labelledby="lblFps">
+                <label><input type="radio" name="fps" value="30" id="fps30"><span>30</span></label>
+                <label><input type="radio" name="fps" value="60" id="fps60"><span>60</span></label>
+                <label><input type="radio" name="fps" value="120" id="fps120"><span>120</span></label>
+              </div>
+            </div>
+            <div class="field">
+              <span class="flabel" id="lblLat">Camera-to-projector lag</span>
+              <div class="seg" role="radiogroup" aria-labelledby="lblLat">
+                <label><input type="radio" name="lat" value="0" id="lat0"><span>0</span></label>
+                <label><input type="radio" name="lat" value="100" id="lat100"><span>100 ms</span></label>
+                <label><input type="radio" name="lat" value="250" id="lat250"><span>250</span></label>
+              </div>
+            </div>
+          </div>
+          <div class="field">
+            <label class="check"><input type="checkbox" id="setPath"> Show what the camera sees (one dot per frame)</label>
+            <label class="check"><input type="checkbox" id="setWashed"> Preview washed-out projection (room lights on)</label>
+          </div>
+          <div class="field">
+            <span class="flabel" id="lblInput">Input</span>
+            <div class="seg" role="radiogroup" aria-labelledby="lblInput">
+              <label><input type="radio" name="input" value="putt" id="inPutt"><span>Putt</span></label>
+              <label><input type="radio" name="input" value="tap" id="inTap"><span>Tap to place</span></label>
+            </div>
+            <p class="help">Tap mode skips the physics so you can check a game's content quickly. It only works for games that read where the ball stops.</p>
+          </div>
+        </div>
+      </details>
+    </aside>
+  </main>
+</div>
+
+<dialog class="dlg" id="exportDlg" aria-labelledby="dlgTitle">
+  <div class="dlg-head"><h2 id="dlgTitle">Game rankings</h2><button class="btn small" id="dlgClose" type="button">Close</button></div>
+  <div class="field">
+    <label class="flabel" for="raterName">Your name (optional)</label>
+    <input type="text" id="raterName" autocomplete="off" placeholder="Shown at the top of the copied text">
+  </div>
+  <ol class="sum-list" id="sumList"></ol>
+  <div class="field">
+    <label class="flabel" for="sumText">Plain text that will be copied</label>
+    <textarea id="sumText" rows="9" readonly></textarea>
+  </div>
+  <div class="dlg-foot"><span class="help" id="copyMsg" aria-live="polite"></span><button class="btn primary" id="btnCopy" type="button">Copy to clipboard</button></div>
+</dialog>

@@ -1,0 +1,21 @@
+const { chromium } = require('playwright');
+const { dist, out } = require('./lib');
+(async () => {
+  const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ['--no-sandbox', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+  const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
+  const errors = []; page.on('pageerror', e => errors.push(e.message));
+  await page.goto(dist('test.html')); await page.waitForTimeout(400);
+  await page.locator('#btnLive').click(); await page.selectOption('#lpSource', 'sim'); await page.locator('#lpStart').click(); await page.waitForTimeout(600);
+  await page.locator('#lpCal').click();
+  await page.waitForFunction(() => { const L = window.__lab.LIVE; return L.cal && L.cal.checkAvg != null && !L.calib; }, null, { timeout: 90000 });
+  await page.locator('#lpPlay').click(); await page.waitForTimeout(300);
+  const vis = async () => page.evaluate(() => ({panel: !document.getElementById('livePanel').hidden, on: window.__lab.LIVE.on, track: document.getElementById('pbTrack').textContent, skipShown: !document.getElementById('pbSkip').hidden}));
+  const a = await vis();
+  await page.mouse.move(800, 400); await page.locator('#pbPanel').click(); await page.waitForTimeout(200); const b = await vis();
+  await page.mouse.move(800, 420); await page.locator('#pbTrack').click(); await page.waitForTimeout(200); const c = await vis();
+  await page.mouse.move(800, 440); await page.locator('#pbDbg').click(); await page.waitForTimeout(300);
+  await page.screenshot({ path: out + '/' + ('bar.png') });
+  console.log('tracking on:', JSON.stringify(a)); console.log('after Live panel:', JSON.stringify(b)); console.log('after Start tracking:', JSON.stringify(c));
+  console.log('ERRORS', errors.length ? errors.join('; ') : 'none');
+  await browser.close();
+})();

@@ -1,0 +1,12 @@
+[
+  { "file": "accuracy.js", "make": "makeAccuracy" },
+  { "file": "map.js", "make": "makeMap" },
+  { "file": "timeline.js", "make": "makeTimeline" },
+  { "file": "periodic.js", "make": "makePeriodic" },
+  { "file": "seek.js", "make": "makeSeek" },
+  { "file": "ttt.js", "make": "makeTTT" },
+  { "file": "stars.js", "make": "makeStars" },
+  { "file": "bowling.js", "make": "makeBowling" },
+  { "file": "gallery.js", "make": "makeGallery" },
+  { "file": "paint.js", "make": "makePaint" }
+]
