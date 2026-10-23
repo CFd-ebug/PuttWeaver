@@ -88,9 +88,9 @@ Paste these in the Firebase console under Realtime Database, Rules. Treat as a s
     ".write": false,
     "pair": {
       "$code": {
-        ".read": true,
-        ".write": true,
-        ".validate": "$code.length == 8 && newData.hasChildren(['room', 'exp']) && newData.child('room').isString() && newData.child('room').val().length == 20",
+        ".read": "$code.length == 8",
+        ".write": "$code.length == 8",
+        ".validate": "newData.hasChildren(['room', 'exp']) && newData.child('room').isString() && newData.child('room').val().length == 20",
         "room": {},
         "exp": {},
         "$other": { ".validate": false }
@@ -98,9 +98,8 @@ Paste these in the Firebase console under Realtime Database, Rules. Treat as a s
     },
     "rooms": {
       "$room": {
-        ".read": true,
-        ".write": true,
-        ".validate": "$room.length == 20",
+        ".read": "$room.length == 20",
+        ".write": "$room.length == 20",
         "state": { ".validate": "newData.hasChildren()" },
         "cmd": { "$id": { ".validate": "newData.hasChildren(['type', 'ts'])" } },
         "ack": { "$id": { ".validate": "newData.hasChildren()" } },
@@ -114,6 +113,24 @@ Paste these in the Firebase console under Realtime Database, Rules. Treat as a s
 }
 ```
 
+Why the id length is checked in `.read` and `.write` and not in `.validate`: write rules apply to everything beneath a path, while validate rules only apply where they are written, so a length check in `.validate` would not stop a write to `rooms/short/state`.
+
+**Check the rules in the Rules Playground** (Realtime Database, Rules, Rules Playground; leave "Authenticated" off; for writes choose the Set simulation type, paste the data, then Run):
+
+| # | Type | Location | Data | Expected |
+|---|---|---|---|---|
+| 1 | Set | `/rooms/K7M2Q9XAB3FGHJNPRSTV/state` | `{"game":"map","rev":1}` | Allowed |
+| 2 | Set | `/rooms/SHORT/state` | `{"game":"map"}` | Denied |
+| 3 | Set | `/rooms/K7M2Q9XAB3FGHJNPRSTV/junk` | `{"a":1}` | Denied |
+| 4 | Get | `/rooms/K7M2Q9XAB3FGHJNPRSTV/state` | | Allowed |
+| 5 | Get | `/rooms` | | Denied (no listing) |
+| 6 | Get | `/pair` | | Denied (no listing) |
+| 7 | Set | `/pair/K7M29QXA` | `{"room":"K7M2Q9XAB3FGHJNPRSTV","exp":1}` | Allowed |
+| 8 | Set | `/pair/K7M29QXA` | `{"room":"short","exp":1}` | Denied |
+| 9 | Set | `/anything` | `{"a":1}` | Denied |
+
+A "Denied" result is the rules working, not an error. The playground only runs a simulation; it does not change any data.
+
 Limits of this design, accepted for an office event: anyone holding a room id can control that hole, and anyone who finds the database address can create junk rooms until the free quota runs out. "Reset pairing" fixes the first, replacing the database fixes the second.
 
 ## Firebase setup (done once by the repo owner)
@@ -125,6 +142,12 @@ Limits of this design, accepted for an office event: anyone holding a room id ca
 5. Stay on the free Spark plan. The traffic here (small state updates, one still per second while setting up) is far below its limits; check the current limits before the event.
 
 A contributor who wants to test against their own project can override the address with a setting stored in `localStorage`, so the shared database is not used for experiments.
+
+## The project's database
+
+The shared database address is `https://puttweaver2-default-rtdb.firebaseio.com`. It goes in `src/config.js` when phase 1 starts.
+
+Claude Code cloud sessions cannot reach `firebaseio.com` (the network allowlist blocks it), so a contributor's Claude cannot test against the real project from there. Plan for that: the Playwright tests use the fake database, and phase 1 includes an in-page **relay self-test** (a button in the Host's tracking panel and the Manager's debug area that writes, reads, streams and deletes a test value and reports each step), so the project owner can confirm the real database works from a phone or laptop browser in one tap.
 
 ## Build phases
 
