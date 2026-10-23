@@ -51,7 +51,7 @@ Everything is plain script concatenated into one scope, not ES modules. A top-le
 ## Rules that are easy to break
 
 1. **No yellow and no green** in any game graphics, and none in physical decorations that could enter the camera's view of the sheet. The camera finds the ball by color, and yellow or green would read as the ball. Blues, purples, magentas, reds, white, black and gray are safe. Avoid orange, gold, lime and tan or skin tones near the ball's hue. The tracker also assumes decent contrast between ball and sheet.
-2. **The page stays fully offline.** No CDN scripts, no web fonts, no `fetch` of remote resources. The build rejects `src=`/`href=`/`url()` pointing at the network, and `tests/offline-check.js` verifies no requests happen. Data goes into `src/data/` as plain JS.
+2. **The page stays fully offline.** No CDN scripts, no web fonts, no `fetch` of remote resources. The build rejects `src=`/`href=`/`url()` pointing at the network, and `tests/offline-check.js` verifies no requests happen. Data goes into `src/data/` as plain JS. The one planned exception is the optional Manager console relay (Firebase, REST only, only to the configured database address); see `docs/console-plan.md` before building any of it.
 3. **One file out.** The deliverable is a single self-contained `dist/index.html`.
 4. **Games must be safe to play on a real sheet:** the ball can only be tracked while on the sheet, and it can roll off, so every game needs a defined result for a ball that leaves ("No reading", see `WHY` in `10-core.js`).
 5. **Do not break the simulation blocks.** Code between `/*SIM*/` and `/*/SIM*/` is test-only: it is stripped from `dist/index.html` and kept in `dist/test.html`. Put desk-test helpers (like `autoPutt`) inside those markers.
@@ -102,6 +102,10 @@ The project is **GPL-3.0-or-later** (`LICENSE`). Every contribution is accepted 
 - Fonts are SIL OFL 1.1, embedded unmodified; license texts are in `assets/fonts/`.
 - Record any new third-party material in `NOTICE.md`.
 - Do not add content (trivia, images, logos) you do not have the right to use. The event is a company event; keep content workplace-appropriate.
+
+## Planned work
+
+`docs/console-plan.md` describes the three roles (Evaluator, Host, Manager), the remote management console, pairing, the data model and the build phases. Read it before touching roles, the remote console or anything network-related.
 
 ## Working with a teammate
 

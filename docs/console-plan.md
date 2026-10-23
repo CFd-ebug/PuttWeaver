@@ -1,0 +1,147 @@
+# Management console and roles: plan
+
+Status: agreed design, not built yet. Written so that any contributor's Claude can build a piece of it without re-deriving the decisions. Update this file when a decision changes.
+
+## Why
+
+The Host phone (camera and projector) will be mounted on a ceiling. Calibration, game changes, restarts and debugging must not need that phone to be touched. A second device, the Manager, does all of it over the internet. Separately, coworkers should be able to try the games on their own phones before the hole is built.
+
+## Decisions already made
+
+- **Three roles**, chosen by the page address:
+  - **Evaluator** (`#play`, the default): plays any game as a demo with a simulated sheet, drags to putt, rates games. No camera, projector or network needed. This is today's page with the Host-only controls hidden.
+  - **Host** (`#host`): the camera phone. Tracking, projection, and publishing state. This is today's page, including its local panel.
+  - **Manager** (`#manage`): the remote console.
+- **Transport: Firebase Realtime Database**, used through its REST API with `fetch` and `EventSource`. No Firebase SDK, no CDN script, no auth, no server of ours. Devices never talk to each other directly.
+- **Pairing by QR code plus a typed backup code**, described below.
+- **The database address lives in the repo** (a config file). It is not a secret. Protection comes from the database rules and from unguessable room names, not from hiding the address.
+- **The ratings and comments system is unchanged.** No shared tally and no form. Ratings stay on each device with the existing copy/export.
+- The page must still work completely offline. The relay is optional and is the only permitted network use: it talks only to the configured database address.
+
+## Defaults unless changed
+
+- Build in phases (below) rather than all four Manager tabs at once.
+- Event lock on Setup and Debug is a long-press, not a PIN.
+- Several Managers may be connected at once. The Host is the single source of truth.
+
+## Roles and landing
+
+- Opening the plain site address opens the Evaluator view. A small "Host or Manager? Switch role" link at the bottom changes role. The choice is remembered in `localStorage`.
+- Direct links: `#play`, `#host`, `#manage`. A pairing QR opens `#manage` with a code in the address (`#manage=K7M2-9QXA`).
+- Implementation: resolve `ROLE` at boot. Put it on `<body>` as a class (`role-play`, `role-host`, `role-manage`) and hide Host-only markup with CSS. The Manager does not start the game engine at all. Keep the engine in one scope; do not split into ES modules.
+- Evaluator hides: camera and tracking panel, projector mode, tee-view and corner-fit controls. It keeps: game list, how-to-play text, scoring, ratings and export, sheet size, speed, difficulty and skill settings (these are how a game is judged).
+
+## Pairing
+
+Goal: connect a Manager to a Host with a QR scan, with a typed code as backup, without exposing a permanent secret on a projected wall.
+
+1. The Host creates a **room** the first time: a random 20-character id (100 bits, Crockford base32) stored in the Host's `localStorage`. It is never shown on screen.
+2. On the Host, "Pair a remote" opens a **pairing window of about two minutes**. It generates a short **pairing code** of 8 characters (for example `K7M2-9QXA`, no `0/O/1/I/L`, case-insensitive, hyphen optional) and writes `pair/<code> = { room, exp }`.
+3. The Host shows the code in large type and a QR code of `<site>/#manage=<code>`. Plain black on white with a wide quiet zone so it scans from a few feet away, even projected.
+4. The Manager reads `pair/<code>`, saves the room id in its own `localStorage`, and from then on reconnects by itself. The Host deletes `pair/<code>` when the window closes or when a Manager has joined.
+5. A paired Manager has "Add a controller": it asks the Host (a command) to open a new pairing window and shows the code and QR on the Manager's own screen. Only the very first pairing needs the Host's screen.
+6. "Reset pairing" on the Host makes a new room id. Old Managers stop working.
+
+The QR code needs an offline generator inside the page (no library can be added). Write a small one (byte mode, error correction L or M, mask selection), and test it by decoding its output if a decoder is available, plus a real phone scan. The typed code is the fallback when a scan fails.
+
+## Manager screens
+
+Phone-first, four tabs, always with a status strip: Host online or offline, camera on/off, tracking state, frame rate.
+
+1. **Run** (default during the event): now-playing card (game, prompt, last result); buttons for next game, restart, skip round, re-arm tracking, and hold (blank sheet); a live **mini-map of the sheet** showing where the tracker thinks the ball is; hole scorecard and rankings.
+2. **Games:** play order, which games are in rotation, per-game options, ratings and export.
+3. **Setup:** checklist with a status mark per step: camera, fit view, calibrate, ball color, delay, test putt. "Fit view" shows a still from the camera and lets the Manager drag the four corners.
+4. **Debug:** frame-rate and debug overlays, tracking tuning (method, cut, guard), a live log, "Copy report" (copies to the Manager's clipboard), and a switch for the camera preview.
+
+**Event lock:** Setup and Debug are hidden until a long-press unlocks them, so a stray tap mid-event cannot change calibration.
+
+**Host behavior:** the Host needs one tap on its own screen at power-up (browsers require a gesture for fullscreen; camera permission is remembered per site). It requests a screen wake lock. If the connection drops, the Host keeps running; the Manager shows "Host offline since 3:42"; nothing is queued.
+
+## Data model (Firebase Realtime Database)
+
+All paths are under the configured database address. Use the REST API: `PUT`/`PATCH`/`POST` with `fetch`, and `GET` with an `EventSource` for streaming (events `put`, `patch`, `keep-alive`, `cancel`, `auth_revoked`). Use server timestamps (`{".sv": "timestamp"}`) everywhere so clock differences between phones do not matter.
+
+```
+pair/<code>                    { room, exp }          written by the Host, short lived
+rooms/<room>/state             Host -> Managers       snapshot, at most 2 per second and on change
+rooms/<room>/cmd/<pushId>      Managers -> Host       { type, args, ts, ttl }
+rooms/<room>/ack/<pushId>      Host -> Managers       { ok, error, ts }
+rooms/<room>/hb/host           server timestamp, every few seconds
+rooms/<room>/hb/mgr/<id>       server timestamp per Manager
+rooms/<room>/want/preview      server timestamp, refreshed by a Manager while the Setup tab is open
+rooms/<room>/preview           latest camera still as a data URL, about 1 per second, only while wanted
+```
+
+- `state` is small JSON: game id and name, status line, hint, mode, hole scorecard and rankings summary, tracker state and frame rate, ball position in sheet feet, setup checklist, last result, and a revision counter.
+- **Commands** are executed by the Host from a command table that calls the same functions the Host's own buttons call. Add the table in `src/js/95-remote-host.js`; do not duplicate logic. A command older than its `ttl` (a few seconds) is ignored, so a restart written while the Host was offline cannot fire later. The Host acknowledges and deletes each command it handles.
+- Previews are small JPEG stills. Stop sending when `want/preview` is stale.
+- Keep a thin transport layer (`src/js/relay.js`: `publish`, `subscribe`, `push`, `serverTime`) so the database can be swapped without touching the console.
+
+## Database rules (draft)
+
+Paste these in the Firebase console under Realtime Database, Rules. Treat as a starting point and check them in the rules simulator before relying on them. Nothing can be listed: there is no read at `pair` or `rooms`, only at a full path under them, so a room can only be reached by knowing its id.
+
+```json
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "pair": {
+      "$code": {
+        ".read": true,
+        ".write": true,
+        ".validate": "$code.length == 8 && newData.hasChildren(['room', 'exp']) && newData.child('room').isString() && newData.child('room').val().length == 20",
+        "room": {},
+        "exp": {},
+        "$other": { ".validate": false }
+      }
+    },
+    "rooms": {
+      "$room": {
+        ".read": true,
+        ".write": true,
+        ".validate": "$room.length == 20",
+        "state": { ".validate": "newData.hasChildren()" },
+        "cmd": { "$id": { ".validate": "newData.hasChildren(['type', 'ts'])" } },
+        "ack": { "$id": { ".validate": "newData.hasChildren()" } },
+        "hb": { "$who": {} },
+        "want": { "$what": {} },
+        "preview": { ".validate": "newData.isString() && newData.val().length < 120000" },
+        "$other": { ".validate": false }
+      }
+    }
+  }
+}
+```
+
+Limits of this design, accepted for an office event: anyone holding a room id can control that hole, and anyone who finds the database address can create junk rooms until the free quota runs out. "Reset pairing" fixes the first, replacing the database fixes the second.
+
+## Firebase setup (done once by the repo owner)
+
+1. At console.firebase.google.com create a project (for example `puttweaver`). Turn Google Analytics off.
+2. Build, Realtime Database, Create database. Pick a region near the event. Start in locked mode.
+3. Open the Rules tab, paste the rules above, and publish.
+4. Copy the database address from the top of the Data tab (it looks like `https://<name>-default-rtdb.<region>.firebasedatabase.app`) and put it in `src/config.js`. No API key, no auth and no Firebase config object are needed because the page only uses the REST API with open, validated rules.
+5. Stay on the free Spark plan. The traffic here (small state updates, one still per second while setting up) is far below its limits; check the current limits before the event.
+
+A contributor who wants to test against their own project can override the address with a setting stored in `localStorage`, so the shared database is not used for experiments.
+
+## Build phases
+
+0. **Roles and landing.** Role resolution, Evaluator view with Host controls hidden, role links, role switch. No network. Acceptance: opening the plain address shows the Evaluator view; every game plays; no camera or projector controls are visible; the existing tests still pass.
+1. **Relay, pairing and Run tab.** `relay.js`, `95-remote-host.js`, the Manager shell and Run tab, pairing window with QR and typed code, status strip, command expiry and acknowledgement, Host offline banner. Acceptance: pair two pages, change game, restart and skip from the Manager, watch the ball position on the mini-map, kill the Host and see the offline banner, and confirm an expired command is ignored.
+2. **Setup tab.** Checklist, calibration, ball color, delay, the preview still and corner dragging.
+3. **Debug tab.** Overlays, tuning, log, report copy.
+4. **Hardening.** Event lock, wake lock, reconnect after reboot, per-room cleanup, docs.
+
+## Testing
+
+- `tests/fake-rtdb.js`: a small Node HTTP server that mimics the parts of the Realtime Database REST API in use (`GET` with and without `text/event-stream`, `PUT`, `PATCH`, `POST` push ids, `DELETE`, server timestamps). Playwright runs a Host page and a Manager page against it in CI. No real Firebase project is needed in CI.
+- Test: pairing success and expiry, command round trip, command ttl, Host offline, state mirroring, and that a Manager never starts the game engine.
+- A manual check against the real Firebase project is part of phase 1.
+- Camera-dependent behavior (preview stills, calibration from the Manager) can only be fully verified on the real rig. Report results in the pull request.
+
+## Open questions
+
+- Whether any command should need a confirmation tap on the Manager (for example restart during a round).
+- Whether a Manager should see a read-only view of the current game on its own screen. Not planned.
