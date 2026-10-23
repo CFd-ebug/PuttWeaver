@@ -28,6 +28,7 @@ src/styles.css        all CSS
 src/body.html         all markup (toolbar, panels, dialogs)
 src/js/               engine code, concatenated in filename order into one script
   00-data.js            placeholders where the map and element data are injected
+  05-role.js            roles (Evaluator, Host, Manager): resolves ROLE from the address, role switch dialog; the Manager returns before the engine starts
   10-core.js            units, physics constants, settings, helpers
   20-content.js         quiz content (timeline events and similar)
   30-scoring.js         hole scoring helpers, per-game options
@@ -56,6 +57,15 @@ Everything is plain script concatenated into one scope, not ES modules. A top-le
 4. **Games must be safe to play on a real sheet:** the ball can only be tracked while on the sheet, and it can roll off, so every game needs a defined result for a ball that leaves ("No reading", see `WHY` in `10-core.js`).
 5. **Do not break the simulation blocks.** Code between `/*SIM*/` and `/*/SIM*/` is test-only: it is stripped from `dist/index.html` and kept in `dist/test.html`. Put desk-test helpers (like `autoPutt`) inside those markers.
 6. Prefer small, reviewable pull requests. Do not reformat files you are not changing.
+
+## Roles
+
+The page has three roles, chosen by the address and remembered per device: **Evaluator** (`#play`, the default: try the games on any device with the simulated sheet), **Host** (`#host`: the camera phone with tracking and projection) and **Manager** (`#manage`: the remote console; today only a placeholder, see `docs/console-plan.md`). A device that already has saved camera settings stays a Host.
+
+- `ROLE` is a global (`'play'`, `'host'` or `'manage'`) and `<body>` gets `role-play`, `role-host` or `role-manage`.
+- Mark anything only the Host needs (camera, projector, tracking, camera-simulation settings) with the class `host-only`; CSS hides it for the other roles. Do not rely on `ROLE` checks alone for markup.
+- The Manager role must never start the engine: `05-role.js` returns before the rest of the script runs. Do not add code above that return that needs the engine.
+- Tests choose the role through the address: `dist(file, role)` in `tests/lib/index.js` defaults to `'host'` so the camera and projector tests keep working; pass `'play'` or `'manage'` for the others. `tests/role-check.js` covers all three.
 
 ## Units and coordinates
 
