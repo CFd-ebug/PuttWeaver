@@ -10,6 +10,7 @@ const full = process.argv.includes('--full');
 const allGames = ['Accuracy', 'Map Quest', 'Timeline', 'Periodic', 'Crowd Search', 'Tic-Tac-Toe', 'Star Sweep', 'Bowling', 'Shooting Gallery', 'Paint Wars'];
 const NO_ERRORS = /^ERRORS none/m;
 const suite = [
+  { name: 'roles: Evaluator, Host and Manager', file: 'role-check.js', timeout: 180, ok: [NO_ERRORS] },
   { name: 'ui: every game plays to a score', file: 'ui-check.js', timeout: 420, ok: [NO_ERRORS] },
   { name: 'offline: no network requests', file: 'offline-check.js', timeout: 120, ok: [/"requests": \[\]/, /"errors": \[\]/] },
   { name: 'ranking and export panel', file: 'rank-check.js', timeout: 120, ok: [NO_ERRORS] },

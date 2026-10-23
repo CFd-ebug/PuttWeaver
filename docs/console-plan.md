@@ -1,6 +1,6 @@
 # Management console and roles: plan
 
-Status: agreed design, not built yet. Written so that any contributor's Claude can build a piece of it without re-deriving the decisions. Update this file when a decision changes.
+Status: agreed design. Phase 0 (roles and landing) is built; the relay, pairing and the Manager screens are not. Written so that any contributor's Claude can build a piece of it without re-deriving the decisions. Update this file when a decision changes.
 
 ## Why
 
@@ -151,7 +151,7 @@ Claude Code cloud sessions cannot reach `firebaseio.com` (the network allowlist 
 
 ## Build phases
 
-0. **Roles and landing.** Role resolution, Evaluator view with Host controls hidden, role links, role switch. No network. Acceptance: opening the plain address shows the Evaluator view; every game plays; no camera or projector controls are visible; the existing tests still pass.
+0. **Roles and landing (built).** Role resolution, Evaluator view with Host controls hidden, role links, role switch. No network. Acceptance: opening the plain address shows the Evaluator view; every game plays; no camera or projector controls are visible; the existing tests still pass.
 1. **Relay, pairing and Run tab.** `relay.js`, `95-remote-host.js`, the Manager shell and Run tab, pairing window with QR and typed code, status strip, command expiry and acknowledgement, Host offline banner. Acceptance: pair two pages, change game, restart and skip from the Manager, watch the ball position on the mini-map, kill the Host and see the offline banner, and confirm an expired command is ignored.
 2. **Setup tab.** Checklist, calibration, ball color, delay, the preview still and corner dragging.
 3. **Debug tab.** Overlays, tuning, log, report copy.
