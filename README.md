@@ -1,12 +1,14 @@
 # PuttWeaver
 
+**Play it: https://cfd-ebug.github.io/PuttWeaver/**
+
 A projected putt-putt hole. A projector shows a mini game on a white plastic sheet; a camera watches a bright yellow golf ball. Where the ball stops, or the path it takes, decides the game. Ten games so far: Accuracy Test, Map Quest, Timeline, Periodic Table, Crowd Search, Tic-Tac-Toe, Star Sweep, Bowling, Shooting Gallery and Paint Wars. Every game except the Accuracy Test scores like a mini golf hole (par 3 or 4, best 1, worst 5).
 
 Everything is one self-contained web page. It also runs with no network at all.
 
 ## Try it
 
-- **Hosted:** the latest `main` is published with GitHub Pages (Settings, Pages shows the address). Open it on a phone in Chrome.
+- **Hosted:** https://cfd-ebug.github.io/PuttWeaver/ always shows the latest `main`; it updates a few minutes after each merge. Open it on a phone in Chrome.
 - **Camera tracking** needs HTTPS or `localhost`, which the hosted page and `npm run serve` both provide. Opening the file directly from storage blocks the camera.
 - **Without a ball or a camera**, drag on the sheet to putt, or use the simulated camera in the tracking panel.
 
