@@ -28,4 +28,4 @@ Each contributor uses their own Claude account. Work on a branch, open a pull re
 
 ## License
 
-No license has been chosen yet. Until one is added, the code is all rights reserved by default even though the repository is public. Third-party data and fonts are listed in `NOTICE.md`.
+PuttWeaver is free software under the **GNU General Public License, version 3 or (at your option) any later version**. See `LICENSE`. In short: you may use, study, change and share it, and if you distribute a modified version (including serving a modified page to other people) you must publish your changes under the same license. Contributions are accepted under the same terms. Third-party material (map data and fonts) and its licenses are listed in `NOTICE.md`.

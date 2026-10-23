@@ -107,7 +107,7 @@ function makePeriodic(){
         `<b>Countdown scoring.</b> In simulation at the default rig settings, an office-average putter who aims at the exact center lands on the square ${SIM.pt1}% of the time and on it or touching ${SIM.pt3}%. That gap is why touching plays as par 3 and exact plays as par 4.`,
         'Most misses are a row too long or too short, because distance control is harder than aim and the rows run across the putt. That makes the far rows and the f-block the hardest targets.',
         '“Nothing” hides the symbols, so it tests where elements sit, not just how to read them. “Familiar” keeps the pool to elements most people have heard of.',
-        'The category tints avoid yellow and green so the table can’t be mistaken for the ball. Element data comes from the open Periodic-Table-JSON dataset (CC BY-SA 3.0).'
+        'The category tints avoid yellow and green so the table can’t be mistaken for the ball. The table uses the standard 18-column layout with the lanthanides and actinides in their own rows.'
       ]);
     }
   };

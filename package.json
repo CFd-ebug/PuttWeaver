@@ -2,6 +2,7 @@
   "name": "puttweaver",
   "version": "0.1.0",
   "private": true,
+  "license": "GPL-3.0-or-later",
   "description": "A projected putt-putt hole: mini games shown on a white sheet, played with a yellow golf ball that a camera tracks.",
   "scripts": {
     "build": "node scripts/build.js",
