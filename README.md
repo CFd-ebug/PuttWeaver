@@ -10,7 +10,7 @@ Everything is one self-contained web page. It also runs with no network at all.
 
 - **Evaluator** (the default): anyone can open the page and play the games on their own phone or laptop, then rate them. No camera or projector is needed.
 - **Host**: the camera phone over the hole. It runs the ball tracking and the projection. Open it with `#host` at the end of the address, or use "Switch role" at the bottom of the page.
-- **Manager**: the remote console for running the hole from another phone. Not built yet (see `docs/console-plan.md`).
+- **Manager**: the remote console for running the hole from another phone. On the Host tap **Add a controller**, then scan the QR code (or type the code) on the Manager phone. It can change games, restart, skip, hold the screen and pause tracking, and shows where the ball is. Setup and debug screens are still planned (see `docs/console-plan.md`). The Host and Manager talk through a free Firebase Realtime Database; tap **Test connection** to check it works from your network.
 
 The role is remembered on each device.
 

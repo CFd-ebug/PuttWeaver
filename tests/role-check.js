@@ -12,7 +12,7 @@ const check = (ok, what) => { (ok ? notes : fails).push((ok ? 'ok   ' : 'FAIL ')
     if (init) await ctx.addInitScript(init);
     const page = await ctx.newPage();
     page.on('pageerror', e => errors.push('pageerror: ' + e.message));
-    page.on('console', m => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
+    page.on('console', m => { if (m.type() === 'error' && !/ERR_CONNECTION_REFUSED/.test(m.text())) errors.push('console: ' + m.text()); });
     await page.goto(url); await page.waitForTimeout(400);
     return { ctx, page };
   }
@@ -30,7 +30,7 @@ const check = (ok, what) => { (ok ? notes : fails).push((ok ? 'ok   ' : 'FAIL ')
       check(!(await hostOnlyShown(page, sel)), 'Evaluator: ' + sel + ' is hidden');
     check(await vis(page, '#stage') && await vis(page, '#btnRole'), 'Evaluator: stage and role switch are visible');
     check((await page.locator('#roleName').textContent()) === 'Evaluator', 'Evaluator: role label says Evaluator');
-    check(!(await vis(page, '#manageStub')), 'Evaluator: the Manager placeholder is hidden');
+    check(!(await vis(page, '#mgr')), 'Evaluator: the Manager console is hidden');
     // plays a hole by dragging
     const box = await page.locator('#stage').boundingBox();
     const sx = box.x + box.width / 2, sy = box.y + box.height * 0.88;
@@ -61,18 +61,21 @@ const check = (ok, what) => { (ok ? notes : fails).push((ok ? 'ok   ' : 'FAIL ')
     check(await roleOf(page) === 'role-host', 'Host: the role is remembered when the address has no role');
     await ctx.close();
   }
-  // Manager: placeholder only, engine never starts
+  // Manager: the console only, engine never starts
   {
     const { ctx, page } = await fresh(dist('test.html', 'manage'));
     check(await roleOf(page) === 'role-manage', 'Manager: #manage gives the Manager role');
-    check(await vis(page, '#manageStub'), 'Manager: the placeholder is visible');
+    check(await vis(page, '#mgr') && await vis(page, '#mgrJoin') && !(await vis(page, '#mgrRun')), 'Manager: the console shows the join card when unpaired');
     check(!(await vis(page, '#stage')) && !(await vis(page, '#btnLive')), 'Manager: no stage and no camera controls');
     check((await page.locator('#games button').count()) === 0, 'Manager: the game list is never built');
     check(await page.evaluate(() => window.__lab === undefined), 'Manager: the game engine did not start');
     check(await page.evaluate(() => { try { return localStorage.getItem('putt-lab-role') === 'manage'; } catch (e) { return false; } }), 'Manager: the role is stored');
-    // pairing links keep the role
-    await page.goto(dist('test.html', 'manage=K7M2-9QXA')); await page.waitForTimeout(300);
+    // pairing links keep the role (the relay address points at a closed port, so nothing real is contacted)
+    await page.evaluate(() => localStorage.setItem('putt-lab-relay-url', 'http://127.0.0.1:59999'));
+    await page.goto(dist('test.html', 'manage=K7M2-9QXA')); await page.waitForTimeout(600);
     check(await roleOf(page) === 'role-manage', 'Manager: #manage=CODE keeps the Manager role');
+    check(/Could not reach the relay/.test(await page.locator('#mgrJoinMsg').innerText()), 'Manager: an unreachable relay gives a plain message');
+    check(!/K7M2/.test(page.url()), 'Manager: the code is taken out of the address');
     await ctx.close();
   }
   // defaults

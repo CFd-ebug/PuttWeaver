@@ -52,6 +52,7 @@ h1{font-family:var(--display);font-weight:400;font-size:clamp(19px,2.2vw,24px);l
 /* roles: Evaluator and Manager never see the Host-only controls; the Manager does not run the games at all */
 .role-play .host-only,.role-manage .host-only{display:none!important}
 .role-manage .main,.role-manage .games{display:none}
+.role-play #mgr,.role-host #mgr{display:none}
 .role-bar{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:center;color:var(--muted);font-size:13px;padding-top:4px}
 .role-bar b{color:var(--ink)}
 .role-list{display:grid;gap:10px}
@@ -254,3 +255,37 @@ select{appearance:auto;font:400 14px/1.2 var(--body);color:var(--ink);background
 .two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 @media (max-width:420px){.two{grid-template-columns:1fr}}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
+
+/* Manager console */
+.mgr{display:grid;gap:14px;max-width:960px;margin:0 auto;width:100%}
+.mgr h2{font-family:var(--display);font-weight:400;font-size:22px;margin:0 0 8px}
+.eyebrow{font:500 11px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.mgr-code{display:flex;gap:10px;flex-wrap:wrap}
+.mgr-code input{font:700 22px/1.2 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 12px;width:11ch;min-width:0;flex:1 1 11ch}
+.mgr-code input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.mgr-strip{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;font-size:13.5px;color:var(--muted);padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.mgr-strip .dot,.mgr-steps .dot{width:10px;height:10px;border-radius:50%;background:var(--line);display:inline-block;flex:none;margin-right:-8px}
+.dot[data-s="ok"]{background:var(--good)}.dot[data-s="warn"]{background:var(--star)}.dot[data-s="bad"]{background:var(--flag)}
+.mgr-tabs{display:flex;gap:6px}
+.mgr-tab{appearance:none;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px 8px 0 0;padding:7px 14px;font:700 14px/1.2 var(--body);cursor:pointer}
+.mgr-tab[aria-selected="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.mgr-grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr))}
+.mgr-now h2{font-size:26px}
+.mgr-status{margin:0 0 4px;font-weight:700}
+.mgr-result{display:grid;gap:2px;margin:8px 0;padding:8px 10px;border-radius:8px;background:var(--sunk);border-left:4px solid var(--line)}
+.mgr-result[data-tone="good"]{border-left-color:var(--good)}.mgr-result[data-tone="bad"]{border-left-color:var(--flag)}
+.mgr-result span{color:var(--muted);font-size:13.5px}
+.mgr-hole{font:500 13px/1.4 var(--mono);color:var(--muted)}
+.mgr-btns{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.mgr-btns .btn{padding:12px 10px}
+.mgr-btns .btn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.mgr-btns .btn:disabled{opacity:.5;cursor:default}
+.mgr-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.mgr-map canvas{width:100%;height:auto;border-radius:8px;background:var(--sunk);display:block}
+.mgr-foot{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.mgr-steps{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:6px;font-size:14px}
+.mgr-steps li{display:flex;gap:14px;align-items:baseline}.mgr-steps li small{color:var(--muted);font:400 12px/1.3 var(--mono)}
+.pair-body{display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.pair-body canvas{width:min(260px,70vw);height:auto;image-rendering:pixelated;background:#fff;border-radius:6px;border:1px solid var(--line)}
+.pair-code{font-size:34px;font-weight:500;letter-spacing:.14em;color:var(--ink)}
+.pair-btns{display:flex;gap:8px;flex-wrap:wrap}

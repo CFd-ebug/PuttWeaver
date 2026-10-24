@@ -2,7 +2,7 @@
 // Three ways to use this page (docs/console-plan.md has the full plan):
 //   Evaluator  #play    the default. Try the games on any device with a simulated sheet; no camera or projector.
 //   Host       #host    the camera phone over the hole: tracking and projection.
-//   Manager    #manage  the remote console. Not built yet: this role shows a placeholder and never starts the game engine.
+//   Manager    #manage  the remote console (08-manager.js). This role never starts the game engine.
 // The role comes from the address (#play, #host, #manage, or #manage=CODE for pairing), is remembered on the device,
 // and falls back to Evaluator. A device that was already used as a camera phone before roles existed stays a Host.
 const ROLE_INFO = {play: 'Evaluator', host: 'Host', manage: 'Manager'};
@@ -42,8 +42,6 @@ document.body.classList.add('role-' + ROLE);
   el('btnRole').addEventListener('click', open);
   el('roleClose').addEventListener('click', close);
   window.addEventListener('hashchange', () => { const r = roleFromHash(); if (r && r !== ROLE) location.reload(); });
-  if (ROLE === 'manage') el('manageStub').hidden = false;
 })();
 
-// The Manager does not run the games or touch the camera.
-if (ROLE === 'manage') return;
+// (08-manager.js runs the console for the Manager role and returns, so the engine below never starts for it.)

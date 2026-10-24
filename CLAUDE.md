@@ -28,7 +28,10 @@ src/styles.css        all CSS
 src/body.html         all markup (toolbar, panels, dialogs)
 src/js/               engine code, concatenated in filename order into one script
   00-data.js            placeholders where the map and element data are injected
-  05-role.js            roles (Evaluator, Host, Manager): resolves ROLE from the address, role switch dialog; the Manager returns before the engine starts
+  05-role.js            roles (Evaluator, Host, Manager): resolves ROLE from the address, role switch dialog
+  06-qr.js              offline QR code generator for the pairing screen
+  07-relay.js           the only network code: Firebase Realtime Database REST client, streaming, self-test
+  08-manager.js         the Manager console and pairing helpers; the Manager returns here, before the engine starts
   10-core.js            units, physics constants, settings, helpers
   20-content.js         quiz content (timeline events and similar)
   30-scoring.js         hole scoring helpers, per-game options
@@ -39,6 +42,7 @@ src/js/               engine code, concatenated in filename order into one scrip
   70-panel.js           the right-hand panel (scorecard, options, rankings, export)
   80-live-core.js       live camera tracking: detection, movement guard, shot state machine
   90-live-ui.js         calibration, color sampling, camera, FPS overlay, tracking panel, projector corner fit
+  95-remote-host.js     the Host side of the console: pairing dialog, state publisher, command table
   99-boot.js            start-up
 src/games/            one file per game, plus games.json (play order)
 src/data/             generated data: map.js (Natural Earth), elements.js (written by scripts/gen-elements.js)
@@ -52,7 +56,7 @@ Everything is plain script concatenated into one scope, not ES modules. A top-le
 ## Rules that are easy to break
 
 1. **No yellow and no green** in any game graphics, and none in physical decorations that could enter the camera's view of the sheet. The camera finds the ball by color, and yellow or green would read as the ball. Blues, purples, magentas, reds, white, black and gray are safe. Avoid orange, gold, lime and tan or skin tones near the ball's hue. The tracker also assumes decent contrast between ball and sheet.
-2. **The page stays fully offline.** No CDN scripts, no web fonts, no `fetch` of remote resources. The build rejects `src=`/`href=`/`url()` pointing at the network, and `tests/offline-check.js` verifies no requests happen. Data goes into `src/data/` as plain JS. The one planned exception is the optional Manager console relay (Firebase, REST only, only to the configured database address); see `docs/console-plan.md` before building any of it.
+2. **The page stays offline unless paired.** No CDN scripts, no web fonts, no `fetch` of remote resources. The build rejects `src=`/`href=`/`url()` pointing at the network, and `tests/offline-check.js` verifies no requests happen. Data goes into `src/data/` as plain JS. The one exception is the Manager console relay (`07-relay.js`: Firebase REST only, only to the configured database address, only after a Host is paired or someone taps Test connection). Evaluators and unpaired Hosts must make no requests; `tests/console-check.js` checks this. See `docs/console-plan.md`.
 3. **One file out.** The deliverable is a single self-contained `dist/index.html`.
 4. **Games must be safe to play on a real sheet:** the ball can only be tracked while on the sheet, and it can roll off, so every game needs a defined result for a ball that leaves ("No reading", see `WHY` in `10-core.js`).
 5. **Do not break the simulation blocks.** Code between `/*SIM*/` and `/*/SIM*/` is test-only: it is stripped from `dist/index.html` and kept in `dist/test.html`. Put desk-test helpers (like `autoPutt`) inside those markers.
@@ -60,11 +64,12 @@ Everything is plain script concatenated into one scope, not ES modules. A top-le
 
 ## Roles
 
-The page has three roles, chosen by the address and remembered per device: **Evaluator** (`#play`, the default: try the games on any device with the simulated sheet), **Host** (`#host`: the camera phone with tracking and projection) and **Manager** (`#manage`: the remote console; today only a placeholder, see `docs/console-plan.md`). A device that already has saved camera settings stays a Host.
+The page has three roles, chosen by the address and remembered per device: **Evaluator** (`#play`, the default: try the games on any device with the simulated sheet), **Host** (`#host`: the camera phone with tracking and projection) and **Manager** (`#manage`: the remote console; the Run tab works, Setup and Debug are planned, see `docs/console-plan.md`). A device that already has saved camera settings stays a Host.
 
 - `ROLE` is a global (`'play'`, `'host'` or `'manage'`) and `<body>` gets `role-play`, `role-host` or `role-manage`.
 - Mark anything only the Host needs (camera, projector, tracking, camera-simulation settings) with the class `host-only`; CSS hides it for the other roles. Do not rely on `ROLE` checks alone for markup.
-- The Manager role must never start the engine: `05-role.js` returns before the rest of the script runs. Do not add code above that return that needs the engine.
+- The Manager role must never start the engine: `08-manager.js` runs the console and returns before the rest of the script runs. Do not add code above that return that needs the engine (units, scoring, games, the rig).
+- Remote commands call the same functions the Host's own buttons call, through `REMOTE_CMDS` in `95-remote-host.js`. Do not duplicate game logic in the console.
 - Tests choose the role through the address: `dist(file, role)` in `tests/lib/index.js` defaults to `'host'` so the camera and projector tests keep working; pass `'play'` or `'manage'` for the others. `tests/role-check.js` covers all three.
 
 ## Units and coordinates
@@ -98,7 +103,7 @@ The camera phone and the projector are placed freely, so the tracker calibrates 
 
 ## Testing
 
-Tests are Playwright scripts in `tests/`; `tests/run.js` runs them and prints a table. They load `dist/index.html` (the shipped page) or `dist/test.html` (adds `window.__lab`, defined by `TEST_HOOK` in `scripts/build.js`). Screenshots go to `tests/out/` (git-ignored). If you add something to the `__lab` hook, add it in `scripts/build.js`.
+Tests are Playwright scripts in `tests/` (the console tests run against `tests/fake-rtdb.js`, a stand-in for the Firebase database, and the QR test uses OpenCV if python3 has it); `tests/run.js` runs them and prints a table. They load `dist/index.html` (the shipped page) or `dist/test.html` (adds `window.__lab`, defined by `TEST_HOOK` in `scripts/build.js`). Screenshots go to `tests/out/` (git-ignored). If you add something to the `__lab` hook, add it in `scripts/build.js`.
 
 If Chromium is not installed through Playwright, set `CHROMIUM_PATH` to a Chromium/Chrome executable. Software WebGL flags are already passed where tests need them.
 
