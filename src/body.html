@@ -29,7 +29,46 @@
       </div>
       <nav class="mgr-tabs" role="tablist" aria-label="Console sections">
         <button class="mgr-tab" role="tab" aria-selected="true" data-tab="run" type="button">Run</button>
+        <button class="mgr-tab" role="tab" aria-selected="false" data-tab="setup" type="button">Setup</button>
       </nav>
+      <div class="mgr-grid" id="mgrTabSetup" hidden>
+        <div class="card mgr-check">
+          <div class="eyebrow">Setup checklist</div>
+          <p class="mgr-busy" id="mgrBusy" role="status" aria-live="polite" hidden></p>
+          <ol class="mgr-list" id="mgrSetupList">
+            <li data-step="cam"><span class="dot"></span><div><b>Camera</b><span class="st"></span><span class="note"></span>
+              <div class="mgr-btns"><button class="btn small" data-cmd="cam" type="button">Start camera</button><button class="btn small" data-cmd="lock" type="button">Lock exposure and focus</button><button class="btn small" data-cmd="camoff" type="button">Stop camera</button><button class="btn small" data-cmd="cam" data-args='{"kind":"sim"}' type="button">Simulated camera</button></div></div></li>
+            <li data-step="fit"><span class="dot"></span><div><b>Projection corners</b><span class="st"></span><span class="note"></span>
+              <div class="mgr-btns"><button class="btn small" id="mgrFitBtn" type="button" aria-pressed="false">Adjust corners</button><button class="btn small" data-cmd="pinrot" type="button">Rotate 180°</button><button class="btn small" data-cmd="pinreset" type="button">Reset corners</button></div></div></li>
+            <li data-step="cal"><span class="dot"></span><div><b>Calibration</b><span class="st"></span><span class="note"></span>
+              <div class="mgr-btns"><button class="btn small" data-cmd="calibrate" type="button">Calibrate</button></div></div></li>
+            <li data-step="color"><span class="dot"></span><div><b>Ball color</b><span class="st"></span><span class="note"></span>
+              <div class="mgr-btns"><button class="btn small" data-cmd="sample" type="button">Sample ball in the ring</button></div>
+              <span class="note">Or tap the ball in the camera picture.</span></div></li>
+            <li data-step="delay"><span class="dot"></span><div><b>Delay</b><span class="st"></span>
+              <div class="mgr-btns"><button class="btn small" data-cmd="delay" type="button">Measure delay</button></div></div></li>
+            <li data-step="track"><span class="dot"></span><div><b>Tracking</b><span class="st"></span>
+              <div class="mgr-btns"><button class="btn small" id="mgrTrackBtn2" type="button">Start tracking</button></div></div></li>
+          </ol>
+          <p class="help" id="mgrCmdMsg2" role="status" aria-live="polite"></p>
+          <ul class="mgr-log mono" id="mgrSetupLog"></ul>
+        </div>
+        <div class="card mgr-prev">
+          <div class="eyebrow">What the camera sees</div>
+          <canvas id="mgrPv" width="480" height="270" aria-label="Camera picture. Tap the ball to sample its color."></canvas>
+          <p class="help" id="mgrPvNote">Waiting for the first picture. It refreshes about once a second while this tab is open.</p>
+        </div>
+        <div class="card mgr-fit" id="mgrFitCard" hidden>
+          <div class="eyebrow">Projection corners</div>
+          <p class="help">The Host is showing its test card. Drag the corners, or pick one and nudge it, until the card is a true rectangle on the sheet. Then tap Done adjusting and calibrate again.</p>
+          <canvas id="mgrFitCv" width="320" height="200" aria-label="Projector screen with four corner handles"></canvas>
+          <div class="mgr-nudge" role="group" aria-label="Nudge the selected corner">
+            <select id="mgrFitSel" aria-label="Corner"><option value="0">Top left</option><option value="1">Top right</option><option value="2">Bottom right</option><option value="3">Bottom left</option></select>
+            <button class="btn small" data-nudge="-1,0" type="button" aria-label="Left">←</button><button class="btn small" data-nudge="0,-1" type="button" aria-label="Up">↑</button><button class="btn small" data-nudge="0,1" type="button" aria-label="Down">↓</button><button class="btn small" data-nudge="1,0" type="button" aria-label="Right">→</button>
+            <label class="check"><input type="checkbox" id="mgrFitCoarse"> Big steps</label>
+          </div>
+        </div>
+      </div>
       <div class="mgr-grid" id="mgrTabRun">
         <div class="card mgr-now">
           <div class="eyebrow">Now playing</div>

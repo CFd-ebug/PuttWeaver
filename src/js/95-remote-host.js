@@ -3,7 +3,7 @@
 // short-lived code as text and as a QR code. A Manager that joins writes a heartbeat; the Host then publishes its status and
 // runs the commands the Manager sends, through REMOTE_CMDS below, which call the same functions the Host's own buttons call.
 const REMOTE_ROOM_KEY = 'putt-lab-room';
-const REMOTE = {room: '', on: false, hold: false, holdResume: false, rev: 0, key: '', busy: false, net: '', mgrs: 0, handled: new Set(), streams: [], timers: [], sync: false, pair: null, pairTimer: 0};
+const REMOTE = {room: '', on: false, hold: false, holdResume: false, rev: 0, key: '', busy: false, net: '', mgrs: 0, handled: new Set(), streams: [], timers: [], sync: false, pair: null, pairTimer: 0, want: {}, task: '', pvBusy: false};
 
 function remoteRoomSaved(){ try { const r = localStorage.getItem(REMOTE_ROOM_KEY); return r && r.length === 20 ? r : ''; } catch (e) { return ''; } }
 function remoteHold(on){
@@ -26,8 +26,52 @@ const REMOTE_CMDS = {
   rearm(){ if (!LIVE.on) throw new Error('Tracking is not running'); armReady(); llog('Retaking the empty-sheet photo (from the console)'); },
   track(a){ if (a && a.on){ if (!startLivePlay()) throw new Error('Start the camera and calibrate first'); } else stopLivePlay('Tracking paused (from the console)'); },
   hold(a){ remoteHold(!!(a && a.on)); },
+  // setup: the same actions as the Host's live panel; long ones run in the background and report through the setup state
+  cam(a){ const kind = a && a.kind === 'sim' ? 'sim' : 'camera'; remoteTask('Starting the camera', () => startSource(kind)); },
+  camoff(){ remoteTaskCheck(); stopSource(); llog('Camera off (from the console)'); renderLiveStatus(); },
+  lock(){ if (LIVE.src !== 'camera') throw new Error('Start the phone camera first'); remoteTask('Locking exposure and focus', lockCamera); },
+  calibrate(){ if (!LIVE.src) throw new Error('Start the camera first'); remoteTask('Calibrating', runCalibration); },
+  delay(){ if (!LIVE.src) throw new Error('Start the camera first'); remoteTask('Measuring the delay', measureDelay); },
+  sample(){ if (!LIVE.Hcs) throw new Error('Calibrate first'); remoteTask('Sampling the ball', sampleBall); },
+  sampleat(a){ if (!LIVE.frame || !LIVE.pw) throw new Error('No camera picture yet'); sampleAtPx(Math.round(clamp(Number(a && a.x), 0, 1) * LIVE.pw), Math.round(clamp(Number(a && a.y), 0, 1) * LIVE.ph)); },
+  fit(a){ remoteTaskCheck(); const on = !!(a && a.on); if (on && !proj) enterProj(); toggleFit(on); },
+  pin(a){ if (!LIVE.fitting) throw new Error('Corner adjusting is not on'); const i = Number(a && a.i); if (!(i >= 0 && i < 4)) throw new Error('No such corner'); setPinCorner(i, Number(a.x), Number(a.y)); },
+  pinrot(){ rotatePin(); },
+  pinreset(){ resetPin(); },
   ping(){}
 };
+function remoteTaskCheck(){ if (REMOTE.task) throw new Error('Busy: ' + REMOTE.task.toLowerCase()); }
+function remoteTask(name, fn){            // starts a long action and returns at once; the setup state shows it until it ends
+  remoteTaskCheck(); if (LIVE.calib) throw new Error('Busy: calibrating on the Host');
+  REMOTE.task = name; REMOTE.key = '';
+  Promise.resolve().then(fn).catch(e => llog(name + ' failed: ' + (e && e.message || e))).finally(() => { REMOTE.task = ''; REMOTE.key = ''; });
+}
+
+// ---------- setup details and camera stills (only while a Manager has the Setup tab open) ----------
+const remoteWants = () => typeof REMOTE.want.preview === 'number' && relayNow() - REMOTE.want.preview < 12000;
+const r3 = v => Math.round(v * 1000) / 1000;
+function remoteSetup(){
+  const c = LIVE.cal, st = LIVE.settings || {}, note = id => { const e = $(id); return e ? {t: e.textContent, tone: e.dataset.tone || ''} : {t: '', tone: ''}; };
+  const quad = LIVE.Hsc && LIVE.pw ? [[0, 0], [W, 0], [W, D], [0, D]].map(([x, y]) => { const [u, v] = camPx(x, y); return [r3(u / LIVE.pw), r3(v / LIVE.ph)]; }) : null;
+  const b = LIVE.det && LIVE.det.best;
+  return {
+    src: LIVE.src || '', label: LIVE.label || '', res: st.width ? st.width + '×' + st.height : '', lock: LIVE.lockNote || '',
+    cal: c ? {n: c.n, of: c.of, avg: r3(c.checkAvg != null ? c.checkAvg : c.fitAvg), max: c.checkMax != null ? r3(c.checkMax) : null} : null,
+    pin: LIVE.pin ? LIVE.pin.map(p => [r3(p[0]), r3(p[1])]) : null, fit: !!LIVE.fitting,
+    method: LIVE.method, sampled: !!(LIVE.method === 'ref' ? LIVE.sig.sampled : LIVE.color.sampled), lat: Math.round(LIVE.latency * 1000),
+    task: REMOTE.task || (LIVE.calib ? 'Working on the Host' : ''),
+    notes: {cam: note('lpCamNote'), cal: note('lpCalNote'), color: note('lpColorNote')},
+    quad, det: b && LIVE.pw ? [r3(b.px / LIVE.pw), r3(b.py / LIVE.ph)] : null, log: LIVE.log.slice(-4).map(e => e.msg)
+  };
+}
+async function remotePreview(){
+  if (!REMOTE.on || !REMOTE.sync || REMOTE.pvBusy || !remoteWants() || !LIVE.src || !LIVE.proc || !LIVE.pw) return;
+  let q = 0.6, url = '';
+  for (;;){ url = LIVE.proc.toDataURL('image/jpeg', q); if (url.length < 100000 || q <= 0.3) break; q -= 0.15; }
+  if (url.length >= 119000) return;                                   // the database rules refuse anything bigger
+  REMOTE.pvBusy = true;
+  try { await relayPut('rooms/' + REMOTE.room + '/preview', url); } catch (e) {} finally { REMOTE.pvBusy = false; }
+}
 
 // ---------- what the Host tells the Manager ----------
 function remoteBall(){
@@ -50,7 +94,8 @@ function remoteSnapshot(){
     result: mode === 'result' && lastResult ? {title: lastResult.title, detail: lastResult.detail || '', tone: lastResult.tone || ''} : null,
     hole: h ? {par: h.par, strokes: h.list.map(e => e.strokes == null ? null : e.strokes), final: !!h.final} : null,
     live: {src: LIVE.src || '', on: !!LIVE.on, state: LIVE.on ? LIVE.state : 'off', cal: !!LIVE.Hcs, fps: Math.round(LIVE.camFps || 0), ms: Math.round(LIVE.procMs || 0)},
-    ball: remoteBall()
+    ball: remoteBall(),
+    setup: remoteWants() ? remoteSetup() : undefined
   };
 }
 async function remotePublish(){
@@ -96,15 +141,16 @@ function remoteStart(){
   const live = s => s === 'live' ? remoteNet('live') : s === 'offline' ? remoteNet('offline', 'The relay is not reachable') : null;
   REMOTE.streams.push(relayStream(base + 'cmd', {onData: remoteOnCmds, onStatus: live}));
   REMOTE.streams.push(relayStream(base + 'hb/mgr', {onData: remoteOnMgrs}));
+  REMOTE.streams.push(relayStream(base + 'want', {onData: c => { const was = remoteWants(); REMOTE.want = c || {}; if (remoteWants() !== was){ REMOTE.key = ''; remotePublish(); } }}));
   const beat = () => relayPut(base + 'hb/host', RELAY_TS).catch(() => {});
   const sync = () => relaySyncClock(REMOTE.room).then(() => { REMOTE.sync = true; beat(); remotePublish(); }).catch(e => { remoteNet('offline', e.message); if (REMOTE.on) setTimeout(sync, 4000); });
   sync();
-  REMOTE.timers.push(setInterval(beat, 5000), setInterval(remotePublish, 500), setInterval(() => remoteOnMgrs(REMOTE.streams[1] && REMOTE.streams[1].cache), 3000));
+  REMOTE.timers.push(setInterval(beat, 5000), setInterval(remotePublish, 500), setInterval(remotePreview, 1000), setInterval(() => remoteOnMgrs(REMOTE.streams[1] && REMOTE.streams[1].cache), 3000));
   remoteUi();
 }
 function remoteStop(){
   REMOTE.on = false; REMOTE.streams.forEach(s => s.close()); REMOTE.streams = []; REMOTE.timers.forEach(clearInterval); REMOTE.timers = [];
-  REMOTE.mgrs = 0; REMOTE.net = ''; remoteUi();
+  REMOTE.mgrs = 0; REMOTE.net = ''; REMOTE.want = {}; remoteUi();
 }
 function remoteEnsureRoom(){
   if (!remoteRoomSaved()){ try { localStorage.setItem(REMOTE_ROOM_KEY, relayRandom(20)); } catch (e) {} }
