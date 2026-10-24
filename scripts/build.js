@@ -8,6 +8,25 @@ const root = path.join(__dirname, '..');
 const src = (...p) => path.join(root, 'src', ...p);
 const read = p => fs.readFileSync(p, 'utf8');
 
+// ---- which version is this? (shown in the page footer so you can tell whether GitHub Pages has caught up) ----
+// In CI: a pull request run says "PR #n preview"; a run on main takes the PR number from the merge or squash commit message.
+function buildInfo() {
+  const sh = c => { try { return require('child_process').execSync(c, { cwd: root, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim(); } catch (e) { return ''; } };
+  const ref = process.env.GITHUB_REF || '';
+  let sha = process.env.GITHUB_SHA || sh('git rev-parse HEAD'), pr = null, kind = 'local';
+  const m = ref.match(/^refs\/pull\/(\d+)\//);
+  if (m) {
+    kind = 'preview'; pr = +m[1];
+    try { const ev = JSON.parse(read(process.env.GITHUB_EVENT_PATH)); if (ev.pull_request && ev.pull_request.head) sha = ev.pull_request.head.sha; } catch (e) {}   // the PR's own last commit, not the temporary merge
+  } else if (process.env.GITHUB_ACTIONS && ref === 'refs/heads/main') {
+    kind = 'main'; const n = sh('git log -1 --format=%s').match(/#(\d+)/); pr = n ? +n[1] : null;
+  }
+  sha = sha.slice(0, 7);
+  const label = kind === 'preview' ? `PR #${pr} preview · ${sha}` : kind === 'main' ? (pr ? `PR #${pr} · ${sha}` : `commit ${sha}`) : `local build${sha ? ' · ' + sha : ''}`;
+  return { kind, pr, sha, label, time: new Date().toISOString() };
+}
+const BUILD = buildInfo();
+
 // ---- source assembly ----
 function assemble() {
   const manifest = JSON.parse(read(src('games', 'games.json')));
@@ -22,7 +41,8 @@ function assemble() {
   const script = files.map(f => read(src('js', f))).join('')
     .replace('/*__GAMES__*/', () => games)
     .replace('/*__MAPDATA__*/', () => read(src('data', 'map.js')).trim())
-    .replace('/*__ELEMENTS__*/', () => read(src('data', 'elements.js')).trim());
+    .replace('/*__ELEMENTS__*/', () => read(src('data', 'elements.js')).trim())
+    .replace('/*__BUILD__*/', () => JSON.stringify(BUILD));
   return read(src('template.html'))
     .replace('/*__STYLES__*/', () => read(src('styles.css')))
     .replace('<!--__BODY__-->', () => read(src('body.html')))
@@ -99,4 +119,5 @@ if (process.argv.includes('--check')) { console.log('ok: both builds parse'); pr
 fs.mkdirSync(path.join(root, 'dist'), { recursive: true });
 fs.writeFileSync(path.join(root, 'dist', 'index.html'), wrap(prod));
 fs.writeFileSync(path.join(root, 'dist', 'test.html'), wrap(test));
+console.log('version:', BUILD.label, '·', BUILD.time);
 console.log('dist/index.html', Buffer.byteLength(wrap(prod)), 'bytes · dist/test.html', Buffer.byteLength(wrap(test)), 'bytes');

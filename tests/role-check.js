@@ -31,6 +31,7 @@ const check = (ok, what) => { (ok ? notes : fails).push((ok ? 'ok   ' : 'FAIL ')
     check(await vis(page, '#stage') && await vis(page, '#btnRole'), 'Evaluator: stage and role switch are visible');
     check((await page.locator('#roleName').textContent()) === 'Evaluator', 'Evaluator: role label says Evaluator');
     check(!(await vis(page, '#mgr')), 'Evaluator: the Manager console is hidden');
+    check(/(local build|PR #\d+|commit) .*built/.test(await page.locator('#buildTag').innerText()), 'Evaluator: the footer shows which version is running');
     // plays a hole by dragging
     const box = await page.locator('#stage').boundingBox();
     const sx = box.x + box.width / 2, sy = box.y + box.height * 0.88;

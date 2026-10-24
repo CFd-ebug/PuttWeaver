@@ -83,6 +83,7 @@ function runManager(){
     else if (age < HOST_ALIVE_MS) { setDot('mgrDotHost', 'ok'); say('mgrHostTxt', 'Host online'); }
     else { setDot('mgrDotHost', 'bad'); say('mgrHostTxt', hostBeat ? 'Host not responding (last seen ' + Math.round(age / 1000) + ' s ago)' : 'Host has not checked in yet'); }
     const l = lastState && lastState.live;
+    say('mgrVer', lastState && lastState.ver ? (lastState.ver === BUILD.label ? 'Version ' + lastState.ver : 'Host runs ' + lastState.ver + ', this phone runs ' + BUILD.label + ': reload the older one') : '');
     say('mgrTrack', l ? (l.on ? 'Tracking: ' + l.state + (l.fps ? ' · ' + l.fps + ' fps' : '') : (l.src ? 'Tracking paused' : 'No camera on the Host')) : '');
   }
 

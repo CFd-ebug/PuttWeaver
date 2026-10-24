@@ -55,6 +55,7 @@ h1{font-family:var(--display);font-weight:400;font-size:clamp(19px,2.2vw,24px);l
 .role-play #mgr,.role-host #mgr{display:none}
 .role-bar{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:center;color:var(--muted);font-size:13px;padding-top:4px}
 .role-bar b{color:var(--ink)}
+.role-bar .mono{font-size:12px}
 .role-list{display:grid;gap:10px}
 .role-opt{appearance:none;text-align:left;border:1px solid var(--line);background:var(--sunk);color:var(--ink);border-radius:10px;padding:12px 14px;font:inherit;display:grid;gap:3px;cursor:pointer}
 .role-opt span{color:var(--muted);font-size:13.5px}
