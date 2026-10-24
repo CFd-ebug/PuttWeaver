@@ -1,6 +1,6 @@
 # Management console and roles: plan
 
-Status: agreed design. Phase 0 (roles and landing) is built; the relay, pairing and the Manager screens are not. Written so that any contributor's Claude can build a piece of it without re-deriving the decisions. Update this file when a decision changes.
+Status: agreed design. Phase 0 (roles and landing) and phase 1 (relay, pairing, Run tab) are built; the Setup and Debug tabs and the hardening are not. Written so that any contributor's Claude can build a piece of it without re-deriving the decisions. Update this file when a decision changes.
 
 ## Why
 
@@ -73,9 +73,9 @@ rooms/<room>/preview           latest camera still as a data URL, about 1 per se
 ```
 
 - `state` is small JSON: game id and name, status line, hint, mode, hole scorecard and rankings summary, tracker state and frame rate, ball position in sheet feet, setup checklist, last result, and a revision counter.
-- **Commands** are executed by the Host from a command table that calls the same functions the Host's own buttons call. Add the table in `src/js/95-remote-host.js`; do not duplicate logic. A command older than its `ttl` (a few seconds) is ignored, so a restart written while the Host was offline cannot fire later. The Host acknowledges and deletes each command it handles.
+- **Commands** are executed by the Host from a command table that calls the same functions the Host's own buttons call. The table is `REMOTE_CMDS` in `src/js/95-remote-host.js`; add commands there and do not duplicate logic. A command older than its `ttl` (a few seconds) is ignored, so a restart written while the Host was offline cannot fire later. The Host acknowledges and deletes each command it handles.
 - Previews are small JPEG stills. Stop sending when `want/preview` is stale.
-- Keep a thin transport layer (`src/js/relay.js`: `publish`, `subscribe`, `push`, `serverTime`) so the database can be swapped without touching the console.
+- Keep a thin transport layer (`src/js/07-relay.js`: `relayGet/Put/Patch/Post/Delete`, `relayStream`, `relayNow`) so the database can be swapped without touching the console.
 
 ## Database rules (draft)
 
@@ -145,14 +145,14 @@ A contributor who wants to test against their own project can override the addre
 
 ## The project's database
 
-The shared database address is `https://puttweaver2-default-rtdb.firebaseio.com`. It goes in `src/config.js` when phase 1 starts.
+The shared database address is `https://puttweaver2-default-rtdb.firebaseio.com`. It is the default in `src/js/07-relay.js` (`RELAY_DEFAULT_URL`); a device can override it with `localStorage['putt-lab-relay-url']`, which is how the tests point the page at the fake database.
 
 Claude Code cloud sessions cannot reach `firebaseio.com` (the network allowlist blocks it), so a contributor's Claude cannot test against the real project from there. Plan for that: the Playwright tests use the fake database, and phase 1 includes an in-page **relay self-test** (a button in the Host's tracking panel and the Manager's debug area that writes, reads, streams and deletes a test value and reports each step), so the project owner can confirm the real database works from a phone or laptop browser in one tap.
 
 ## Build phases
 
 0. **Roles and landing (built).** Role resolution, Evaluator view with Host controls hidden, role links, role switch. No network. Acceptance: opening the plain address shows the Evaluator view; every game plays; no camera or projector controls are visible; the existing tests still pass.
-1. **Relay, pairing and Run tab.** `relay.js`, `95-remote-host.js`, the Manager shell and Run tab, pairing window with QR and typed code, status strip, command expiry and acknowledgement, Host offline banner. Acceptance: pair two pages, change game, restart and skip from the Manager, watch the ball position on the mini-map, kill the Host and see the offline banner, and confirm an expired command is ignored.
+1. **Relay, pairing and Run tab (built).** `06-qr.js`, `07-relay.js`, `08-manager.js`, `95-remote-host.js`, the Manager shell and Run tab, pairing window with QR and typed code, status strip, command expiry and acknowledgement, Host offline banner. Acceptance: pair two pages, change game, restart and skip from the Manager, watch the ball position on the mini-map, kill the Host and see the offline banner, and confirm an expired command is ignored.
 2. **Setup tab.** Checklist, calibration, ball color, delay, the preview still and corner dragging.
 3. **Debug tab.** Overlays, tuning, log, report copy.
 4. **Hardening.** Event lock, wake lock, reconnect after reboot, per-room cleanup, docs.
@@ -168,3 +168,14 @@ Claude Code cloud sessions cannot reach `firebaseio.com` (the network allowlist 
 
 - Whether any command should need a confirmation tap on the Manager (for example restart during a round).
 - Whether a Manager should see a read-only view of the current game on its own screen. Not planned.
+
+## What phase 1 built (for whoever continues)
+
+- `src/js/06-qr.js`: offline QR encoder (byte mode, level M, versions 1 to 10). `tests/qr-decode.js` decodes its output with OpenCV.
+- `src/js/07-relay.js`: REST and streaming client, server clock offset, random ids, and `relaySelfTest`, the one-tap check of a real database (button "Test connection" on the Host's pairing dialog and on the Manager).
+- `src/js/08-manager.js`: the Manager console (join by code or link, status strip, Run tab, Add a controller, Unpair) and the pairing helpers the Host shares. It ends with `if (ROLE === 'manage'){ runManager(); return; }`, so the Manager never reaches the engine files after it.
+- `src/js/95-remote-host.js`: the Host side. A Host only uses the network after "Add a controller" has created a room (kept in `localStorage['putt-lab-room']`). It publishes its state about twice a second **only while a Manager is connected or the pairing window is open**, writes a heartbeat every 5 s, and runs commands through `REMOTE_CMDS`. "Hold screen" is `REMOTE.hold`, drawn by `drawHold` from `drawProj`.
+- Codes: 8 characters, one use, two minutes, stored at `pair/<code>`. A Manager's room and id are in `localStorage['putt-lab-mgr']`.
+- `tests/fake-rtdb.js` is a stand-in database with the same rules as the real one; `tests/console-check.js` runs a Host and two Managers against it.
+
+Not covered by any automated test, because the sandbox cannot reach `firebaseio.com`: the real database. Tap **Test connection** once from a phone to confirm it.

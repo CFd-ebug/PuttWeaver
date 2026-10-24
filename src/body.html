@@ -10,10 +10,67 @@
     <nav class="games" id="games" aria-label="Games"></nav>
   </header>
 
-  <section class="card" id="manageStub" hidden>
-    <h2>Manager console</h2>
-    <p>The remote console is not built yet. It will pair with the Host phone and let you change games, calibrate and debug from here. Until then, run the hole from the Host phone itself.</p>
-    <p class="help">Plan and progress: <code>docs/console-plan.md</code> in the repository.</p>
+  <section class="mgr" id="mgr" hidden>
+    <div class="card" id="mgrJoin">
+      <h2>Connect to a Host</h2>
+      <p>On the Host phone tap <b>Add a controller</b>. Scan the QR code it shows with this phone's camera, or type the 8 character code here.</p>
+      <div class="mgr-code">
+        <input type="text" id="mgrCodeIn" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="9" placeholder="XXXX-XXXX" aria-label="Pairing code">
+        <button class="btn primary" id="mgrJoinBtn" type="button">Connect</button>
+      </div>
+      <p class="help" id="mgrJoinMsg" role="status" aria-live="polite"></p>
+    </div>
+    <div class="mgr-run" id="mgrRun" hidden>
+      <div class="mgr-strip" id="mgrStrip" role="status" aria-live="polite">
+        <span class="dot" id="mgrDotRelay"></span><span id="mgrRelayTxt">Connecting…</span>
+        <span class="dot" id="mgrDotHost"></span><span id="mgrHostTxt">Host: waiting</span>
+        <span class="mono" id="mgrTrack"></span>
+      </div>
+      <nav class="mgr-tabs" role="tablist" aria-label="Console sections">
+        <button class="mgr-tab" role="tab" aria-selected="true" data-tab="run" type="button">Run</button>
+      </nav>
+      <div class="mgr-grid" id="mgrTabRun">
+        <div class="card mgr-now">
+          <div class="eyebrow">Now playing</div>
+          <h2 id="mgrGame">—</h2>
+          <p id="mgrStatus" class="mgr-status"></p>
+          <p class="help" id="mgrHint"></p>
+          <div class="mgr-result" id="mgrResult" hidden><b id="mgrResTitle"></b><span id="mgrResDetail"></span></div>
+          <div class="mgr-hole" id="mgrHole"></div>
+        </div>
+        <div class="card mgr-ctl">
+          <div class="mgr-btns">
+            <button class="btn" data-cmd="prev" type="button">Previous game</button>
+            <button class="btn" data-cmd="next" type="button">Next game</button>
+            <button class="btn" data-cmd="restart" type="button">Restart game</button>
+            <button class="btn" data-cmd="skip" type="button">Skip round</button>
+            <button class="btn" data-cmd="rearm" type="button">Retake empty-sheet photo</button>
+            <button class="btn" id="mgrTrackBtn" type="button" aria-pressed="false">Pause tracking</button>
+            <button class="btn" id="mgrHoldBtn" type="button" aria-pressed="false">Hold screen</button>
+          </div>
+          <div class="mgr-chips" id="mgrChips" role="group" aria-label="Choose a game"></div>
+          <p class="help" id="mgrCmdMsg" role="status" aria-live="polite"></p>
+        </div>
+        <div class="card mgr-map">
+          <div class="eyebrow">Ball on the sheet</div>
+          <canvas id="mgrMap" width="480" height="270" aria-label="Where the camera sees the ball"></canvas>
+          <p class="help mono" id="mgrBall"></p>
+        </div>
+      </div>
+    </div>
+    <div class="mgr-foot">
+      <button class="btn small" id="mgrAdd" type="button" hidden>Add a controller</button>
+      <button class="btn small" id="mgrTest" type="button">Test connection</button>
+      <button class="btn small" id="mgrUnpair" type="button" hidden>Unpair</button>
+    </div>
+    <div class="card" id="mgrTestBox" hidden>
+      <h2>Connection test</h2>
+      <ul class="mgr-steps" id="mgrSteps"></ul>
+    </div>
+    <dialog class="dlg" id="mgrAddDlg" aria-labelledby="mgrAddTitle">
+      <div class="dlg-head"><h2 id="mgrAddTitle">Add a controller</h2><button class="btn small" id="mgrAddClose" type="button">Close</button></div>
+      <div class="pair-body"><canvas id="mgrAddQr" aria-label="QR code for pairing another phone"></canvas><div><div class="pair-code mono" id="mgrAddCode"></div><p class="help" id="mgrAddNote"></p></div></div>
+    </dialog>
   </section>
 
   <main class="main">
@@ -23,7 +80,7 @@
         <span id="hint" aria-live="polite">Drag back from anywhere on the stage, then let go to putt.</span>
         <span class="mono" id="shotInfo"></span>
         <span class="keys">Keyboard: click the stage, then ← → to aim (Shift for 5°), ↑ ↓ for power, Space to putt, Enter to continue.</span>
-        <span class="foot-btns host-only"><button class="btn small proj-btn" id="btnLive" type="button">Live camera</button><button class="btn small proj-btn" id="btnProj" type="button">Projector mode</button></span>
+        <span class="foot-btns host-only"><button class="btn small proj-btn" id="btnLive" type="button">Live camera</button><button class="btn small proj-btn" id="btnPair" type="button">Add a controller</button><button class="btn small proj-btn" id="btnProj" type="button">Projector mode</button></span>
       </div>
       <div class="proj-ui host-only" id="projUi" hidden>
         <span class="pu-hint">Drag to putt · Enter next</span>
@@ -33,10 +90,20 @@
         <button class="btn small" id="pbPanel" type="button" title="Live camera panel (L)">Live panel</button>
         <button class="btn small" id="pbTrack" type="button" hidden>Start tracking</button>
         <button class="btn small" id="pbSkip" type="button" title="Skip to the next round (N)" hidden>Skip round</button>
+        <button class="btn small" id="pbPair" type="button" title="Show the pairing code (P)">Controller</button>
         <button class="btn small" id="pbFps" type="button" title="Frame rate overlay (F)" aria-pressed="false">FPS</button>
         <button class="btn small" id="pbDbg" type="button" title="Debug overlay (D)" aria-pressed="false">Debug</button>
         <button class="btn small" id="btnProjExit" type="button" title="Exit (Esc)">Exit</button>
       </div>
+      <dialog class="dlg host-only" id="pairDlg" aria-labelledby="pairTitle">
+  <div class="dlg-head"><h2 id="pairTitle">Add a controller</h2><button class="btn small" id="pairClose" type="button">Close</button></div>
+  <div class="pair-body"><canvas id="pairQr" aria-label="QR code for pairing the Manager console"></canvas>
+    <div><div class="pair-code mono" id="pairCode"></div><p class="help" id="pairNote" role="status" aria-live="polite"></p></div></div>
+  <p class="help" id="pairWho"></p>
+  <div class="dlg-foot"><span class="help" id="pairNet" role="status" aria-live="polite"></span>
+    <span class="pair-btns"><button class="btn small" id="pairTest" type="button">Test connection</button><button class="btn small" id="pairReset" type="button">Reset pairing</button><button class="btn small primary" id="pairNew" type="button">New code</button></span></div>
+  <ul class="mgr-steps" id="pairSteps"></ul>
+</dialog>
       <video class="cam-video host-only" id="camVideo" playsinline muted></video>
       <div class="pin-handles host-only" id="pinHandles" hidden></div>
       <div class="live-panel host-only" id="livePanel" hidden>
