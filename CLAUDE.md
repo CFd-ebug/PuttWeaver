@@ -18,6 +18,8 @@ npm run serve               serves dist/ at http://localhost:8080 (localhost all
 
 `dist/` is generated and git-ignored. Never edit it and never commit it. CI builds, tests and deploys `dist/index.html` to GitHub Pages on every merge to `main`. Pull request runs upload the built page as a downloadable artifact so a change can be tried on a phone.
 
+The page footer shows which version is running (`PR #n · sha · built time`; a pull request's downloadable artifact says `PR #n preview`). `scripts/build.js` fills it in from the CI environment, so after merging a pull request wait until the footer shows its number; a Host console also warns when the Host and Manager run different versions.
+
 Quick manual try without a server: open `dist/index.html` in a browser. Camera access needs HTTPS or localhost, so use the Pages site (https://cfd-ebug.github.io/PuttWeaver/) or `npm run serve` for anything involving the camera.
 
 ## Layout

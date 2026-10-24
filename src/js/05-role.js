@@ -26,6 +26,9 @@ document.body.classList.add('role-' + ROLE);
 (function bindRoleUi(){
   const el = id => document.getElementById(id);
   el('roleName').textContent = ROLE_INFO[ROLE];
+  const when = new Date(BUILD.time), tag = el('buildTag');
+  tag.textContent = BUILD.label + ' · built ' + when.toLocaleString([], {month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'});
+  tag.title += ' Built ' + BUILD.time + '.';
   const sub = document.querySelector('.brand p'); if (sub) sub.textContent = ROLE_SUB[ROLE];
   const dlg = el('roleDlg');
   const open = () => { if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', ''); };

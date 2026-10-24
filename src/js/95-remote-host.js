@@ -43,7 +43,7 @@ function remoteSnapshot(){
   if (!game) return null;
   const h = game.hole ? game.hole() : null;
   return {
-    sheet: {w: W, d: D}, proj, hold: REMOTE.hold, mode,
+    ver: BUILD.label, sheet: {w: W, d: D}, proj, hold: REMOTE.hold, mode,
     game: {idx: gameIdx, id: game.id, name: game.name, status: mode === 'over' ? 'Hole complete' : game.status(), how: game.how},
     games: GAMES.map(g => g.name),
     hint: $('hint').textContent,
