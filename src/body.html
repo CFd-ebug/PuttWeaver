@@ -10,6 +10,12 @@
     <nav class="games" id="games" aria-label="Games"></nav>
   </header>
 
+  <section class="card" id="manageStub" hidden>
+    <h2>Manager console</h2>
+    <p>The remote console is not built yet. It will pair with the Host phone and let you change games, calibrate and debug from here. Until then, run the hole from the Host phone itself.</p>
+    <p class="help">Plan and progress: <code>docs/console-plan.md</code> in the repository.</p>
+  </section>
+
   <main class="main">
     <section class="stage" id="stageSec" aria-label="Simulated playing surface">
       <div id="stageBox"><canvas id="stage" tabindex="0" aria-label="Playing surface. Drag back and release to putt, or use the arrow keys and Space."></canvas></div>
@@ -17,9 +23,9 @@
         <span id="hint" aria-live="polite">Drag back from anywhere on the stage, then let go to putt.</span>
         <span class="mono" id="shotInfo"></span>
         <span class="keys">Keyboard: click the stage, then ← → to aim (Shift for 5°), ↑ ↓ for power, Space to putt, Enter to continue.</span>
-        <span class="foot-btns"><button class="btn small proj-btn" id="btnLive" type="button">Live camera</button><button class="btn small proj-btn" id="btnProj" type="button">Projector mode</button></span>
+        <span class="foot-btns host-only"><button class="btn small proj-btn" id="btnLive" type="button">Live camera</button><button class="btn small proj-btn" id="btnProj" type="button">Projector mode</button></span>
       </div>
-      <div class="proj-ui" id="projUi" hidden>
+      <div class="proj-ui host-only" id="projUi" hidden>
         <span class="pu-hint">Drag to putt · Enter next</span>
         <button class="btn small" id="pbGame" type="button" title="Next game (G)">Next game</button>
         <button class="btn small" id="pbTest" type="button" title="Test card (T)">Test card</button>
@@ -31,9 +37,9 @@
         <button class="btn small" id="pbDbg" type="button" title="Debug overlay (D)" aria-pressed="false">Debug</button>
         <button class="btn small" id="btnProjExit" type="button" title="Exit (Esc)">Exit</button>
       </div>
-      <video class="cam-video" id="camVideo" playsinline muted></video>
-      <div class="pin-handles" id="pinHandles" hidden></div>
-      <div class="live-panel" id="livePanel" hidden>
+      <video class="cam-video host-only" id="camVideo" playsinline muted></video>
+      <div class="pin-handles host-only" id="pinHandles" hidden></div>
+      <div class="live-panel host-only" id="livePanel" hidden>
         <div class="lp-head"><h2>Live ball tracking</h2><button class="btn small" id="lpClose" type="button">Hide (L)</button></div>
         <div id="lpStatus"></div>
         <canvas id="lpPreview" aria-label="Camera view. Tap the ball to sample its color."></canvas>
@@ -176,7 +182,7 @@
             </select>
             <p class="help">A mouse is far more precise than a putter, so every putt gets random aim and distance error.</p>
           </div>
-          <div class="two">
+          <div class="two host-only">
             <div class="field">
               <span class="flabel" id="lblFps">Camera frame rate</span>
               <div class="seg" role="radiogroup" aria-labelledby="lblFps">
@@ -194,7 +200,7 @@
               </div>
             </div>
           </div>
-          <div class="field">
+          <div class="field host-only">
             <label class="check"><input type="checkbox" id="setPath"> Show what the camera sees (one dot per frame)</label>
             <label class="check"><input type="checkbox" id="setWashed"> Preview washed-out projection (room lights on)</label>
           </div>
@@ -210,7 +216,21 @@
       </details>
     </aside>
   </main>
+
+  <footer class="role-bar">
+    <span>Viewing as <b id="roleName">Evaluator</b></span>
+    <button class="btn small" id="btnRole" type="button">Switch role</button>
+  </footer>
 </div>
+
+<dialog class="dlg" id="roleDlg" aria-labelledby="roleDlgTitle">
+  <div class="dlg-head"><h2 id="roleDlgTitle">Choose a role</h2><button class="btn small" id="roleClose" type="button">Close</button></div>
+  <div class="role-list">
+    <button class="role-opt" data-role="play" type="button"><b>Evaluator</b><span>Try the games on this device and rate them. No camera or projector needed.</span></button>
+    <button class="role-opt" data-role="host" type="button"><b>Host</b><span>The camera phone over the hole: runs the tracking and the projection.</span></button>
+    <button class="role-opt" data-role="manage" type="button"><b>Manager</b><span>The remote console for running the hole from another phone.</span></button>
+  </div>
+</dialog>
 
 <dialog class="dlg" id="exportDlg" aria-labelledby="dlgTitle">
   <div class="dlg-head"><h2 id="dlgTitle">Game rankings</h2><button class="btn small" id="dlgClose" type="button">Close</button></div>

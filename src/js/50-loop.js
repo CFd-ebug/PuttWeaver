@@ -148,7 +148,7 @@ function draw(){
   circle(TEE.x,TEE.y,0.06); ctx.fillStyle='#4f586b'; ctx.fill();
   txt('TEE', TEE.x, D+1.58, 0.09, {font:'display', color:'#596274', ls:.15, min:8});
   txt(`${W} × ${+D.toFixed(2)} ft sheet · stimp ${SPEEDS[S.speed]}`, 0.02, D+0.62, 0.085, {font:'mono', weight:400, color:'#69728a', align:'left', min:8});
-  txt(`camera ${S.fps} fps · lag ${S.latency} ms`, 0.02, D+0.86, 0.085, {font:'mono', weight:400, color:'#69728a', align:'left', min:8});
+  if (ROLE !== 'play') txt(`camera ${S.fps} fps · lag ${S.latency} ms`, 0.02, D+0.86, 0.085, {font:'mono', weight:400, color:'#69728a', align:'left', min:8});
   ctx.fillStyle='rgba(0,0,0,0.4)'; ctx.fillRect(0.05,0.07,W,D);
   if (S.rails){
     ctx.fillStyle='#3f4655'; ctx.fillRect(-0.26,-0.26,0.26,D+0.26); ctx.fillRect(W,-0.26,0.26,D+0.26); ctx.fillRect(-0.26,-0.26,W+0.52,0.26);

@@ -8,7 +8,7 @@ function refreshPanel(){
   renderRatings();
   $('gCard').innerHTML = game.card();
   $('gNotes').innerHTML = game.notes();
-  $('rigSummary').textContent = `${W} ft · ${S.rails?'rails':'open'} · stimp ${SPEEDS[S.speed]} · ${S.latency} ms`;
+  $('rigSummary').textContent = `${W} ft · ${S.rails?'rails':'open'} · stimp ${SPEEDS[S.speed]}${ROLE === 'play' ? '' : ' · ' + S.latency + ' ms'}`;
   document.querySelectorAll('.chip').forEach((c,i) => c.setAttribute('aria-pressed', String(i===gameIdx)));
 }
 function showResult(r){
