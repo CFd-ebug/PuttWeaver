@@ -43,8 +43,7 @@ const PLACE_TIERS = [
 // Map Quest result quips, shown on the sheet and as the result title. One is picked at random from the group that matches how far
 // off the ball stopped, measured on the sheet like the scoring: within the close zone (hit), 1.5x, 2.5x, 4x the zone, or farther (world).
 // A few places have their own pair, which replaces the general line. Written for this project.
-const MAP_ASK = ['Was that a putting problem or a geography problem?', 'Blame the putter, or blame the atlas?',
-  'Great aim at the wrong place, or bad aim at the right one?', 'Hard to say if that’s your stroke or your schoolwork.', 'We’ll say the green was crooked.'];
+const MAP_ASK = ['Great aim at the wrong place, or bad aim at the right one?'];
 const MAP_QUIPS = {
   hit: ['Pinpoint. Do you live there?', 'The locals would like a word with your travel agent.', 'Somewhere, a geography teacher just felt proud.',
     'Right on the money. Frame this one.', 'That’s not a guess, that’s a GPS.'],
