@@ -63,9 +63,6 @@ const until = async (fn, ms = 10000, step = 100) => { const t0 = Date.now(); for
   check(await mgr.page.locator('#mgrRepSw button').count() === 4, 'The replay has a switch for each shot');
   const canvasInk = async sel => mgr.page.locator(sel).evaluate(c => { const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 0; i < d.length; i += 4 * 97) if (d[i + 3] && (d[i] < 200 || d[i + 2] < 200)) n++; return n; });
   check(await canvasInk('#mgrReplay') > 50, 'The replay canvas is drawing');
-  const f1 = await mgr.page.locator('#mgrReplay').evaluate(c => c.toDataURL()); await sleep(400);
-  const f2 = await mgr.page.locator('#mgrReplay').evaluate(c => c.toDataURL());
-  check(f1 !== f2, 'The replay moves');
   check(await canvasInk('#mgrWorld') > 50, 'The world map of everyone’s results is drawn');
   const seen = new Set(); for (let i = 0; i < 14; i++) { seen.add(await mgr.page.locator('#mgrReplay').evaluate(c => c.toDataURL())); await sleep(300); }
   check(seen.size >= 5, 'The replay keeps looping (' + seen.size + ' different frames in four seconds)');
