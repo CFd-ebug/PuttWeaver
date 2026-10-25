@@ -38,8 +38,31 @@ const REMOTE_CMDS = {
   pin(a){ if (!LIVE.fitting) throw new Error('Corner adjusting is not on'); const i = Number(a && a.i); if (!(i >= 0 && i < 4)) throw new Error('No such corner'); setPinCorner(i, Number(a.x), Number(a.y)); },
   pinrot(){ rotatePin(); },
   pinreset(){ resetPin(); },
+  // debug: overlays, tuning, camera controls and the report
+  opt(a){ remoteOption(a && a.k, a && a.v); },
+  tune(a){
+    const sl = LIVE_SLIDERS.find(x => x[0] === (a && a.id)); if (!sl) throw new Error('No such setting');
+    const v = Number(a.v); if (!isFinite(v)) throw new Error('Not a number');
+    sl[6](clamp(v, sl[2], sl[3])); liveSave(); syncLiveInputs(); llog(`${sl[1]} set to ${sl[7](+sl[5]())} (from the console)`);
+  },
+  camset(a){ const k = a && a.k; if (!(k in CAM_CTL)) throw new Error('No such camera setting'); const rg = camCtlRange(k); if (!rg || !LIVE.track) throw new Error('This camera does not have that setting'); setCamCtl(k, clamp(Number(a.v), rg.min, rg.max)); },
+  report(){ return {text: liveReport()}; },
   ping(){}
 };
+function remoteOption(k, v){
+  switch (k){
+    case 'dbg': LIVE.dbg = !!v; buildPixMap(); if ($('lpDbg')) $('lpDbg').checked = LIVE.dbg; break;
+    case 'fps': toggleFpsHud(!!v); break;
+    case 'mark': LIVE.mark = !!v; if ($('lpMark')) $('lpMark').checked = LIVE.mark; break;
+    case 'dbgmove': LIVE.dbgCorner = LIVE.dbgCorner === 'tr' ? 'tl' : 'tr'; buildPixMap(); liveSave(); break;
+    case 'method': if (v !== 'ref' && v !== 'hue') throw new Error('Unknown method'); LIVE.method = v; liveSave(); llog(v === 'ref' ? 'Detection: compare to empty sheet' : 'Detection: color only'); renderLiveStatus(); break;
+    case 'zone': if (v !== 'tee' && v !== 'anywhere') throw new Error('Unknown start zone'); LIVE.startZone = v; liveSave(); break;
+    case 'proc': if (![320, 480, 640].includes(Number(v))) throw new Error('Unknown detail level'); LIVE.pwTarget = Number(v); liveSave(); break;
+    case 'res': if (![640, 1280, 1920].includes(Number(v))) throw new Error('Unknown resolution'); LIVE.res = Number(v); liveSave(); if (LIVE.src === 'camera') remoteTask('Restarting the camera', () => startSource('camera')); break;
+    default: throw new Error('Unknown option');
+  }
+  syncLiveInputs();
+}
 function remoteTaskCheck(){ if (REMOTE.task) throw new Error('Busy: ' + REMOTE.task.toLowerCase()); }
 function remoteTask(name, fn){            // starts a long action and returns at once; the setup state shows it until it ends
   remoteTaskCheck(); if (LIVE.calib) throw new Error('Busy: calibrating on the Host');
@@ -62,6 +85,26 @@ function remoteSetup(){
     task: REMOTE.task || (LIVE.calib ? 'Working on the Host' : ''),
     notes: {cam: note('lpCamNote'), cal: note('lpCalNote'), color: note('lpColorNote')},
     quad, det: b && LIVE.pw ? [r3(b.px / LIVE.pw), r3(b.py / LIVE.ph)] : null, log: LIVE.log.slice(-4).map(e => e.msg)
+  };
+}
+const remoteWantsDebug = () => typeof REMOTE.want.debug === 'number' && relayNow() - REMOTE.want.debug < 12000;
+function remoteDebug(){
+  const f = LIVE.stats, sw = LIVE.seenWin, seen = sw.length ? Math.round(sw.filter(e => e.hit).length / sw.length * 100) : 0, d = LIVE.det, b = d && d.best;
+  const pwr = LIVE.pw || 1, phr = LIVE.ph || 1, r1 = v => Math.round(v * 10) / 10;
+  const t0 = LIVE.log.length ? LIVE.log[0].t : 0;
+  const cam = {};
+  for (const k in CAM_CTL){ const rg = camCtlRange(k); if (rg) cam[k] = {label: CAM_CTL[k][0], min: rg.min, max: rg.max, step: rg.step, v: rg.v, t: CAM_CTL[k][1](rg.v)}; }
+  return {
+    rates: {disp: r1(rateOf(LIVE.rafTimes)), cam: r1(rateOf(LIVE.camTimes)), ana: r1(LIVE.camFps), ms: r1(LIVE.frameMs), proc: r1(LIVE.procMs)},
+    seen, frames: f.frames, weak: f.weak, starts: [f.moveStarts, f.restStarts], pw: LIVE.pw, ph: LIVE.ph,
+    det: d ? {count: d.count, blobs: d.blobs.length, note: d.note || '', weak: !!d.weak, best: b ? {x: r1(b.x * 100) / 100, y: r1(b.y * 100) / 100, area: b.area, exp: r1(b.exp), fill: Math.round(b.fill * 100) / 100, aspect: r1(b.aspect)} : null} : null,
+    blobs: d ? d.blobs.slice(0, 8).map(x => [r3(x.px / pwr), r3(x.py / phr), r1(x.ratio || 0)]) : [],
+    motion: {now: r1(LIVE.motion * 100), floor: r1(LIVE.floor * 100), thr: r1(LIVE.busyThr * 100), busy: !!LIVE.busy},
+    refAge: LIVE.ref ? r1(state.clock - LIVE.refAt) : null,
+    sliders: LIVE_SLIDERS.map(([id, label, mn, mx, step, get, , fmt]) => ({id, label, min: mn, max: mx, step, v: +get(), t: fmt(+get())})),
+    opts: {dbg: !!LIVE.dbg, fps: !!LIVE.fpsHud, mark: !!LIVE.mark, method: LIVE.method, zone: LIVE.startZone, proc: LIVE.pwTarget, res: LIVE.res},
+    cam, lock: LIVE.lockNote || '', canCam: LIVE.src === 'camera',
+    log: LIVE.log.slice(-40).map(e => ((e.t - t0) / 1000).toFixed(1) + ' s  ' + e.msg)
   };
 }
 async function remotePreview(){
@@ -95,7 +138,8 @@ function remoteSnapshot(){
     hole: h ? {par: h.par, strokes: h.list.map(e => e.strokes == null ? null : e.strokes), final: !!h.final} : null,
     live: {src: LIVE.src || '', on: !!LIVE.on, state: LIVE.on ? LIVE.state : 'off', cal: !!LIVE.Hcs, fps: Math.round(LIVE.camFps || 0), ms: Math.round(LIVE.procMs || 0)},
     ball: remoteBall(),
-    setup: remoteWants() ? remoteSetup() : undefined
+    setup: remoteWants() ? remoteSetup() : undefined,
+    debug: remoteWantsDebug() ? remoteDebug() : undefined
   };
 }
 async function remotePublish(){
@@ -117,7 +161,7 @@ async function remoteRun(id, c){
     const age = relayNow() - Number(c.ts), ttl = Number(c.ttl) || 8000;
     if (!(age <= ttl)) throw new Error('Too old to run (' + (isFinite(age) ? Math.round(age / 1000) + ' s' : 'no time') + ')');   // a restart written while the Host was offline must not fire later
     const fn = REMOTE_CMDS[c.type]; if (!fn) throw new Error('Unknown command ' + c.type);
-    fn(c.args || {}); ack = {ok: true};
+    const out = fn(c.args || {}); ack = {ok: true}; if (out && typeof out.text === 'string') ack.text = out.text;
   } catch (e) { ack = {ok: false, error: String(e.message || e)}; }
   ack.ts = RELAY_TS;
   try { await relayPut('rooms/' + REMOTE.room + '/ack/' + id, ack); await relayDelete('rooms/' + REMOTE.room + '/cmd/' + id); } catch (e) {}
@@ -141,7 +185,7 @@ function remoteStart(){
   const live = s => s === 'live' ? remoteNet('live') : s === 'offline' ? remoteNet('offline', 'The relay is not reachable') : null;
   REMOTE.streams.push(relayStream(base + 'cmd', {onData: remoteOnCmds, onStatus: live}));
   REMOTE.streams.push(relayStream(base + 'hb/mgr', {onData: remoteOnMgrs}));
-  REMOTE.streams.push(relayStream(base + 'want', {onData: c => { const was = remoteWants(); REMOTE.want = c || {}; if (remoteWants() !== was){ REMOTE.key = ''; remotePublish(); } }}));
+  REMOTE.streams.push(relayStream(base + 'want', {onData: c => { const was = remoteWants() + '' + remoteWantsDebug(); REMOTE.want = c || {}; if (remoteWants() + '' + remoteWantsDebug() !== was){ REMOTE.key = ''; remotePublish(); } }}));
   const beat = () => relayPut(base + 'hb/host', RELAY_TS).catch(() => {});
   const sync = () => relaySyncClock(REMOTE.room).then(() => { REMOTE.sync = true; beat(); remotePublish(); }).catch(e => { remoteNet('offline', e.message); if (REMOTE.on) setTimeout(sync, 4000); });
   sync();
