@@ -3,7 +3,7 @@
 // short-lived code as text and as a QR code. A Manager that joins writes a heartbeat; the Host then publishes its status and
 // runs the commands the Manager sends, through REMOTE_CMDS below, which call the same functions the Host's own buttons call.
 const REMOTE_ROOM_KEY = 'putt-lab-room';
-const REMOTE = {room: '', on: false, hold: false, holdResume: false, rev: 0, key: '', busy: false, net: '', mgrs: 0, handled: new Set(), streams: [], timers: [], sync: false, pair: null, pairTimer: 0, want: {}, task: '', pvBusy: false};
+const REMOTE = {room: '', on: false, hold: false, holdResume: false, rev: 0, key: '', busy: false, net: '', mgrs: 0, handled: new Set(), streams: [], timers: [], sync: false, pair: null, pairTimer: 0, want: {}, task: '', pvBusy: false, pvSent: false};
 
 function remoteRoomSaved(){ try { const r = localStorage.getItem(REMOTE_ROOM_KEY); return r && r.length === 20 ? r : ''; } catch (e) { return ''; } }
 function remoteHold(on){
@@ -103,17 +103,19 @@ function remoteDebug(){
     refAge: LIVE.ref ? r1(state.clock - LIVE.refAt) : null,
     sliders: LIVE_SLIDERS.map(([id, label, mn, mx, step, get, , fmt]) => ({id, label, min: mn, max: mx, step, v: +get(), t: fmt(+get())})),
     opts: {dbg: !!LIVE.dbg, fps: !!LIVE.fpsHud, mark: !!LIVE.mark, method: LIVE.method, zone: LIVE.startZone, proc: LIVE.pwTarget, res: LIVE.res},
-    cam, lock: LIVE.lockNote || '', canCam: LIVE.src === 'camera',
+    cam, lock: LIVE.lockNote || '', canCam: LIVE.src === 'camera', wake: {on: WAKE.on, why: WAKE.why},
     log: LIVE.log.slice(-40).map(e => ((e.t - t0) / 1000).toFixed(1) + ' s  ' + e.msg)
   };
 }
 async function remotePreview(){
-  if (!REMOTE.on || !REMOTE.sync || REMOTE.pvBusy || !remoteWants() || !LIVE.src || !LIVE.proc || !LIVE.pw) return;
+  if (!REMOTE.on || !REMOTE.sync || REMOTE.pvBusy) return;
+  if (!remoteWants()){ if (REMOTE.pvSent){ REMOTE.pvSent = false; relayDelete('rooms/' + REMOTE.room + '/preview').catch(() => {}); } return; }     // nobody is looking: do not leave a picture in the database
+  if (!LIVE.src || !LIVE.proc || !LIVE.pw) return;
   let q = 0.6, url = '';
   for (;;){ url = LIVE.proc.toDataURL('image/jpeg', q); if (url.length < 100000 || q <= 0.3) break; q -= 0.15; }
   if (url.length >= 119000) return;                                   // the database rules refuse anything bigger
   REMOTE.pvBusy = true;
-  try { await relayPut('rooms/' + REMOTE.room + '/preview', url); } catch (e) {} finally { REMOTE.pvBusy = false; }
+  try { await relayPut('rooms/' + REMOTE.room + '/preview', url); REMOTE.pvSent = true; } catch (e) {} finally { REMOTE.pvBusy = false; }
 }
 
 // ---------- what the Host tells the Manager ----------
@@ -176,6 +178,28 @@ function remoteOnMgrs(cache){
   if (n !== REMOTE.mgrs){ REMOTE.mgrs = n; REMOTE.key = ''; remoteUi(); remotePublish(); }
 }
 
+// ---------- keeping the room tidy ----------
+// Nothing in the database is ever listed or expired by the database itself, so the Host sweeps its own room: answers nobody picked
+// up, heartbeats of controllers that went away, old picture requests, a leftover camera picture and an unused pairing code.
+const REMOTE_PAIR_KEY = 'putt-lab-pair';
+async function remoteTidy(){
+  if (!REMOTE.on || !REMOTE.sync) return;
+  const base = 'rooms/' + REMOTE.room + '/', now = relayNow(), drop = p => relayDelete(base + p).catch(() => {});
+  try {
+    const acks = await relayGet(base + 'ack') || {};
+    for (const id in acks){ const a = acks[id]; if (!a || typeof a.ts !== 'number' || now - a.ts > 120000) drop('ack/' + id); }
+    const mgrs = await relayGet(base + 'hb/mgr') || {};
+    for (const id in mgrs) if (typeof mgrs[id] !== 'number' || now - mgrs[id] > 600000) drop('hb/mgr/' + id);
+    const want = await relayGet(base + 'want') || {};
+    for (const k in want) if (typeof want[k] !== 'number' || now - want[k] > 600000) drop('want/' + k);
+    if (!remoteWants()) drop('preview');
+  } catch (e) {}
+}
+function remoteForgetCode(){
+  let c = ''; try { c = localStorage.getItem(REMOTE_PAIR_KEY) || ''; localStorage.removeItem(REMOTE_PAIR_KEY); } catch (e) {}
+  if (c.length === 8) relayDelete('pair/' + c).catch(() => {});
+}
+
 // ---------- start, stop, reset ----------
 function remoteStart(){
   if (ROLE !== 'host' || REMOTE.on) return;
@@ -187,9 +211,9 @@ function remoteStart(){
   REMOTE.streams.push(relayStream(base + 'hb/mgr', {onData: remoteOnMgrs}));
   REMOTE.streams.push(relayStream(base + 'want', {onData: c => { const was = remoteWants() + '' + remoteWantsDebug(); REMOTE.want = c || {}; if (remoteWants() + '' + remoteWantsDebug() !== was){ REMOTE.key = ''; remotePublish(); } }}));
   const beat = () => relayPut(base + 'hb/host', RELAY_TS).catch(() => {});
-  const sync = () => relaySyncClock(REMOTE.room).then(() => { REMOTE.sync = true; beat(); remotePublish(); }).catch(e => { remoteNet('offline', e.message); if (REMOTE.on) setTimeout(sync, 4000); });
-  sync();
-  REMOTE.timers.push(setInterval(beat, 5000), setInterval(remotePublish, 500), setInterval(remotePreview, 1000), setInterval(() => remoteOnMgrs(REMOTE.streams[1] && REMOTE.streams[1].cache), 3000));
+  const sync = () => relaySyncClock(REMOTE.room).then(() => { REMOTE.sync = true; beat(); remotePublish(); remoteTidy(); }).catch(e => { remoteNet('offline', e.message); if (REMOTE.on) setTimeout(sync, 4000); });
+  remoteForgetCode(); sync();
+  REMOTE.timers.push(setInterval(remoteTidy, 300000), setInterval(beat, 5000), setInterval(remotePublish, 500), setInterval(remotePreview, 1000), setInterval(() => remoteOnMgrs(REMOTE.streams[1] && REMOTE.streams[1].cache), 3000));
   remoteUi();
 }
 function remoteStop(){
@@ -218,7 +242,7 @@ function remoteUi(){
 }
 function remoteDropCode(){
   clearInterval(REMOTE.pairTimer);
-  if (REMOTE.pair){ const c = REMOTE.pair.code; REMOTE.pair = null; relayDelete('pair/' + c).catch(() => {}); }     // an unused code should not linger
+  if (REMOTE.pair){ const c = REMOTE.pair.code; REMOTE.pair = null; relayDelete('pair/' + c).catch(() => {}); try { localStorage.removeItem(REMOTE_PAIR_KEY); } catch (e) {} }     // an unused code should not linger
 }
 function remoteClosePair(){
   remoteDropCode();
@@ -230,7 +254,7 @@ async function remoteNewCode(){
   try {
     remoteEnsureRoom();
     if (!REMOTE.sync) await relaySyncClock(REMOTE.room);
-    const p = await pairOpen(REMOTE.room); REMOTE.pair = p;
+    const p = await pairOpen(REMOTE.room); REMOTE.pair = p; try { localStorage.setItem(REMOTE_PAIR_KEY, p.code); } catch (e) {}
     pairPaint($('pairQr'), p.link); $('pairCode').textContent = relayShowCode(p.code);
     clearInterval(REMOTE.pairTimer);
     const tick = () => {

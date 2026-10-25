@@ -291,6 +291,11 @@ select{appearance:auto;font:400 14px/1.2 var(--body);color:var(--ink);background
 .pair-code{font-size:34px;font-weight:500;letter-spacing:.14em;color:var(--ink)}
 .pair-btns{display:flex;gap:8px;flex-wrap:wrap}
 .mgr-tabs{flex-wrap:wrap}
+.mgr-lock{position:relative;overflow:hidden;appearance:none;border:1px dashed var(--line);background:transparent;color:var(--muted);border-radius:8px 8px 0 0;padding:7px 12px;font:600 13px/1.2 var(--body);cursor:pointer;margin-left:auto;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.mgr-lock[data-s="open"]{border-style:solid;color:var(--ink)}
+.mgr-lock span{position:relative}
+.mgr-lockfill{position:absolute!important;inset:0 auto 0 0;width:0;background:var(--accent);opacity:.25}
+.mgr-lock.holding .mgr-lockfill{width:100%;transition:width .9s linear}
 .mgr-list{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:12px}
 .mgr-list li{display:flex;gap:10px;align-items:flex-start}
 .mgr-list li>.dot{margin:6px 0 0;flex:none}

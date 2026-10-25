@@ -1,6 +1,6 @@
 # Management console and roles: plan
 
-Status: agreed design. Phases 0 (roles and landing), 1 (relay, pairing, Run tab) 2 (Setup tab) and 3 (Debug tab) are built; the hardening is not. Written so that any contributor's Claude can build a piece of it without re-deriving the decisions. Update this file when a decision changes.
+Status: agreed design. Phases 0 (roles and landing), 1 (relay, pairing, Run tab) 2 (Setup tab), 3 (Debug tab) and 4 (hardening) are built. The console is complete. Written so that any contributor's Claude can build a piece of it without re-deriving the decisions. Update this file when a decision changes.
 
 ## Why
 
@@ -53,7 +53,7 @@ Phone-first, four tabs, always with a status strip: Host online or offline, came
 3. **Setup:** checklist with a status mark per step: camera, fit view, calibrate, ball color, delay, test putt. "Fit view" shows a still from the camera and lets the Manager drag the four corners.
 4. **Debug:** frame-rate and debug overlays, tracking tuning (method, cut, guard), a live log, "Copy report" (copies to the Manager's clipboard), and a switch for the camera preview.
 
-**Event lock:** Setup and Debug are hidden until a long-press unlocks them, so a stray tap mid-event cannot change calibration.
+**Event lock:** Setup and Debug are hidden until a long-press unlocks them, so a stray tap mid-event cannot change calibration. (Built: hold the lock button for about a second; see "What phase 4 built".)
 
 **Host behavior:** the Host needs one tap on its own screen at power-up (browsers require a gesture for fullscreen; camera permission is remembered per site). It requests a screen wake lock. If the connection drops, the Host keeps running; the Manager shows "Host offline since 3:42"; nothing is queued.
 
@@ -155,7 +155,7 @@ Claude Code cloud sessions cannot reach `firebaseio.com` (the network allowlist 
 1. **Relay, pairing and Run tab (built).** `06-qr.js`, `07-relay.js`, `08-manager.js`, `95-remote-host.js`, the Manager shell and Run tab, pairing window with QR and typed code, status strip, command expiry and acknowledgement, Host offline banner. Acceptance: pair two pages, change game, restart and skip from the Manager, watch the ball position on the mini-map, kill the Host and see the offline banner, and confirm an expired command is ignored.
 2. **Setup tab (built).** Checklist (camera, corners, calibration, ball color, delay, tracking), camera still with tap-to-sample, corner handles that can be dragged or nudged.
 3. **Debug tab (built).** Overlays, tuning, camera sliders, log, report copy, picture switch.
-4. **Hardening.** Event lock, wake lock, reconnect after reboot, per-room cleanup, docs.
+4. **Hardening (built).** Event lock, wake lock, reconnect after reboot, per-room cleanup, docs.
 
 ## Testing
 
@@ -197,3 +197,11 @@ Not covered by any automated test, because the sandbox cannot reach `firebaseio.
 - **Sliders** are built on the Manager from what the Host sends, so a new `LIVE_SLIDERS` entry shows up on its own. A control the Manager just touched ignores incoming values for 1.5 s so it does not jump.
 - **Picture:** the same preview stream as Setup, with the blobs the detector found drawn as white squares.
 - Not done: camera device picker. Event lock is phase 4.
+
+## What phase 4 built
+
+- **Event lock (Manager):** the Setup and Debug tabs start hidden. Holding the lock button in the tab row for 0.9 s shows them; tapping it again (it then reads "Lock"), or ten idle minutes, hides them again (and returns to Run). The unlock is kept in `sessionStorage`, so a reload keeps it but a new browser session starts locked. It is a guard against stray taps, not security: the room id is still the secret. `showTab` also refuses a locked tab.
+- **Wake lock (Host):** `keepAwake` in `90-live-ui.js` now runs from page start on a Host (it used to wait for the camera), is repeated when the page returns to the front and every 30 s if it is missing, and `WAKE` is reported as `debug.wake` (shown in the Debug tab as "Screen kept awake"). A browser without the API shows why.
+- **Restart recovery (Host):** the Host already reconnected to its room on its own (`remoteStart` at boot). It now also remembers whether the phone camera and tracking were on (`putt-lab-resume`, written by `resumeSave` whenever they change) and `resumeAfterRestart` switches them on again 1.5 s after the page opens. It skips a blocked camera permission, never resumes the simulated camera, and does not resume tracking without a calibration made with the same camera. "Stop camera" from the Manager or the panel clears the memory. Still needed after a real reboot: the phone must have the page open (set it as the home page or open the saved link), and Chrome must keep the camera permission for the site.
+- **Room cleanup (Host):** `remoteTidy` at start and every five minutes deletes answers older than two minutes, controller heartbeats and wants older than ten minutes, and the camera picture when nobody wants it; a picture is also deleted as soon as the Manager stops asking. `remoteForgetCode` deletes a pairing code left over from a closed page. A Manager removes its own heartbeat when it unpairs. Nothing else needs cleaning: `state` is overwritten in place and commands are deleted when handled.
+- **Not covered by tests:** a real phone restart, real Chrome wake locks (the test uses a stand-in), and resuming tracking itself (the fake camera cannot be calibrated). Please confirm these on the rig.

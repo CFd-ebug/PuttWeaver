@@ -219,10 +219,51 @@ function stopSource(){
   const v = $('camVideo'); if (v){ v.pause(); v.srcObject = null; v.removeAttribute('src'); }
   LIVE.stream = null; LIVE.track = null; LIVE.src = null; LIVE.caps = {}; LIVE.frame = null; LIVE.camFps = 0;
   LIVE.ref = null; LIVE.refWant = 0; LIVE.prevL = null; LIVE.motionHist = []; LIVE.motionRaw = []; LIVE.motion = 0; LIVE.busy = false; LIVE.camTimes = []; LIVE.seenWin = []; LIVE.hud = null;
+  resumeSave();
 }
+// Keeping the Host screen on: a ceiling-mounted phone must not dim or lock. A Host asks from the moment the page opens (not only
+// once the camera is on), asks again whenever the page comes back to the front or the system took the lock away, and reports the
+// result to the console. WAKE.why says why it is off.
+const WAKE = {on: false, why: ''};
 let wakeLockObj = null;
-async function keepAwake(){ try { if (navigator.wakeLock) wakeLockObj = await navigator.wakeLock.request('screen'); } catch (e) {} }
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && LIVE.src) keepAwake(); });
+async function keepAwake(){
+  if (!navigator.wakeLock){ WAKE.on = false; WAKE.why = 'this browser has no wake lock'; return; }
+  if (wakeLockObj && !wakeLockObj.released && WAKE.on) return;
+  try {
+    const lock = await navigator.wakeLock.request('screen'); wakeLockObj = lock; WAKE.on = true; WAKE.why = '';
+    lock.addEventListener('release', () => { if (wakeLockObj === lock){ WAKE.on = false; WAKE.why = 'released by the system'; } });
+  } catch (e) { WAKE.on = false; WAKE.why = e.name || 'refused'; }
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && (LIVE.src || ROLE === 'host')) keepAwake(); });
+// What the Host was doing, so a phone that restarts (power cut, crash, reboot) gets back to work on its own. The camera and tracking
+// switch on again only if they were on; "Camera off" from the console or the panel clears it. A calibration made with another
+// camera is not trusted, so tracking waits for a new calibration.
+const RESUME_KEY = 'putt-lab-resume';
+function resumeSave(){
+  if (ROLE !== 'host') return;
+  try { localStorage.setItem(RESUME_KEY, JSON.stringify({cam: LIVE.src === 'camera', track: !!LIVE.on || (typeof REMOTE !== 'undefined' && REMOTE.holdResume)})); } catch (e) {}
+}
+async function resumeAfterRestart(){
+  let r = null; try { r = JSON.parse(localStorage.getItem(RESUME_KEY) || 'null'); } catch (e) {}
+  if (!r || !r.cam || LIVE.src) return;
+  try {
+    if (navigator.permissions && navigator.permissions.query){
+      const p = await navigator.permissions.query({name: 'camera'});
+      if (p.state === 'denied'){ llog('Camera not resumed after the restart: camera permission is blocked for this page'); return; }
+    }
+  } catch (e) {}
+  llog('Phone restarted: switching the camera back on');
+  if (!await startSource('camera')) return;
+  if (!r.track) return;
+  if (!LIVE.Hcs){ llog('Tracking not resumed: not calibrated'); return; }
+  if (LIVE.cal && LIVE.cal.label && LIVE.cal.label !== LIVE.label){ llog('Tracking not resumed: the calibration was made with another camera'); return; }
+  startLivePlay();
+}
+if (ROLE === 'host'){
+  keepAwake();
+  setInterval(() => { if (document.visibilityState === 'visible' && !WAKE.on) keepAwake(); }, 30000);
+  setTimeout(resumeAfterRestart, 1500);
+}
 async function startSource(kind){
   stopSource(); lpNote('lpCamNote', '');
   if (kind === 'sim'){
@@ -251,7 +292,7 @@ async function startSource(kind){
     watchVideoFrames(); await listCameras(); buildCamControls(); keepAwake();
     llog(`Camera on: ${LIVE.label}, ${LIVE.settings.width}×${LIVE.settings.height} at ${LIVE.settings.frameRate ? Math.round(LIVE.settings.frameRate) : '?'} fps`);
     if (LIVE.cal && LIVE.cal.label !== LIVE.label) lpNote('lpCamNote', 'This calibration was made with a different camera. Calibrate again.', 'bad');
-    renderLiveStatus(); return true;
+    resumeSave(); renderLiveStatus(); return true;
   } catch (e) { lpNote('lpCamNote', camErrorText(e), 'bad'); llog(`Camera failed: ${e.name}: ${e.message}`); renderLiveStatus(); return false; }
 }
 async function loadClip(file){

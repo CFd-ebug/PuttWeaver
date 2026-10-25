@@ -153,6 +153,7 @@ function runManager(){
 
   // ---------- Setup tab ----------
   function showTab(name){
+    if (name !== 'run' && !unlockedAt) name = 'run';                    // Setup and Debug are behind the event lock
     tab = name;
     root.querySelectorAll('.mgr-tab').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
     el('mgrTabRun').hidden = name !== 'run'; el('mgrTabSetup').hidden = name !== 'setup'; el('mgrTabDebug').hidden = name !== 'debug';
@@ -280,7 +281,8 @@ function runManager(){
       ['Guard numbers', m.now + '% changing · usual ' + m.floor + '% · limit ' + m.thr + '%'],
       ['Empty-sheet photo', d.refAge != null ? d.refAge + ' s old' : 'none'],
       ['Shots started', (d.starts || [0, 0])[0] + ' rolling in · ' + (d.starts || [0, 0])[1] + ' at rest'],
-      ['Analysis size', d.pw ? d.pw + '×' + d.ph : '–']
+      ['Analysis size', d.pw ? d.pw + '×' + d.ph : '–'],
+      ['Screen kept awake', d.wake && d.wake.on ? 'yes' : 'no' + (d.wake && d.wake.why ? ' · ' + d.wake.why : ''), d.wake && d.wake.on ? '' : 'warn']
     ]);
     const o = d.opts || {};
     root.querySelectorAll('#mgrTabDebug [data-opt]').forEach(x => {
@@ -328,8 +330,42 @@ function runManager(){
   el('mgrUnpair').addEventListener('click', () => {            // two taps, so it can't happen by accident
     const b = el('mgrUnpair');
     if (!unpairArm){ b.textContent = 'Tap again to unpair'; unpairArm = setTimeout(() => { unpairArm = 0; b.textContent = 'Unpair'; }, 4000); return; }
-    clearTimeout(unpairArm); unpairArm = 0; b.textContent = 'Unpair'; save(null); showJoin();
+    clearTimeout(unpairArm); unpairArm = 0; b.textContent = 'Unpair'; if (room && myId) relayDelete('rooms/' + room + '/hb/mgr/' + myId).catch(() => {}); save(null); showJoin();
   });
+
+  // ---------- event lock ----------
+  // Setup and Debug can change calibration and tracking, so they stay hidden during an event until someone holds the lock button.
+  // The unlock lasts for this browser session and ends after ten idle minutes or a tap on the button.
+  const LOCK_HOLD_MS = 900, LOCK_IDLE_MS = 600000, LOCK_KEY = 'putt-lab-mgr-unlocked';
+  let unlockedAt = 0, holdTimer = 0, idleTimer = 0, justUnlocked = false;
+  try { const t = Number(sessionStorage.getItem(LOCK_KEY)); if (t && Date.now() - t < LOCK_IDLE_MS) unlockedAt = t; } catch (e) {}
+  function applyLock(){
+    const u = unlockedAt > 0;
+    root.querySelectorAll('.mgr-tab[data-tab="setup"], .mgr-tab[data-tab="debug"]').forEach(b => { b.hidden = !u; });
+    el('mgrLock').dataset.s = u ? 'open' : 'locked'; say('mgrLockTxt', u ? 'Lock' : 'Hold to unlock Setup and Debug');
+    if (!u && tab !== 'run') showTab('run');
+    clearTimeout(idleTimer); if (u) idleTimer = setTimeout(() => setLock(false), Math.max(1000, LOCK_IDLE_MS - (Date.now() - unlockedAt)));
+  }
+  function setLock(open){
+    unlockedAt = open ? Date.now() : 0;
+    try { if (open) sessionStorage.setItem(LOCK_KEY, String(unlockedAt)); else sessionStorage.removeItem(LOCK_KEY); } catch (e) {}
+    applyLock();
+  }
+  function holdStart(){
+    if (unlockedAt || holdTimer) return;
+    el('mgrLock').classList.add('holding');
+    holdTimer = setTimeout(() => { holdTimer = 0; el('mgrLock').classList.remove('holding'); justUnlocked = true; setTimeout(() => { justUnlocked = false; }, 400); setLock(true); }, LOCK_HOLD_MS);
+  }
+  function holdEnd(){ clearTimeout(holdTimer); holdTimer = 0; el('mgrLock').classList.remove('holding'); }
+  const lockBtn = el('mgrLock');
+  lockBtn.addEventListener('pointerdown', holdStart);
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(t => lockBtn.addEventListener(t, holdEnd));
+  lockBtn.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && !e.repeat) holdStart(); });
+  lockBtn.addEventListener('keyup', holdEnd);
+  lockBtn.addEventListener('contextmenu', e => e.preventDefault());
+  lockBtn.addEventListener('click', () => { if (unlockedAt && !justUnlocked) setLock(false); });
+  root.addEventListener('pointerdown', e => { if (unlockedAt && e.target !== lockBtn && !lockBtn.contains(e.target)){ unlockedAt = Date.now(); try { sessionStorage.setItem(LOCK_KEY, String(unlockedAt)); } catch (err) {} applyLock(); } }, true);
+  applyLock();
 
   // ---------- go ----------
   function joinFromAddress(){

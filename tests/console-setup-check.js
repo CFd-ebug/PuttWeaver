@@ -2,7 +2,7 @@
 // receive the preview picture, calibrate, sample the ball, adjust the projection corners, measure the delay, start tracking,
 // and check that the Host stops sending pictures once the Setup tab is closed.
 const { chromium } = require('playwright');
-const { dist } = require('./lib');
+const { dist, unlockManager } = require('./lib');
 const { startFake } = require('./fake-rtdb');
 const fails = [], notes = [];
 const check = (ok, what) => { (ok ? notes : fails).push((ok ? 'ok   ' : 'FAIL ') + what); };
@@ -35,6 +35,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   const hostLive = () => host.page.evaluate(() => { const L = window.__lab.LIVE; return { src: L.src, cal: !!L.cal, check: L.cal && L.cal.checkAvg != null, sampled: !!L.sig.sampled, fitting: L.fitting, pin: L.pin, on: L.on, state: L.state, calib: !!L.calib, lat: L.latency, log: L.log.map(e => e.msg) }; });
 
   // ---- open Setup ----
+  await unlockManager(mgr.page);
   await mgr.page.click('.mgr-tab[data-tab="setup"]');
   check(await mgr.page.locator('#mgrTabSetup').isVisible() && !await mgr.page.locator('#mgrTabRun').isVisible(), 'The Setup tab replaces the Run tab');
   check(await until(() => fake.get('rooms/' + room + '/want/preview')), 'Opening Setup tells the Host that pictures are wanted');
