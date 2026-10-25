@@ -26,7 +26,7 @@ function pairSteps(ul, rows){          // test results as a list: dot, name, det
 function runManager(){
   const el = id => document.getElementById(id);
   const root = el('mgr'); root.hidden = false;
-  let room = '', myId = '', acks = {}, tab = 'run', pvStream = null, wantTimer = 0, pvImg = null, pvSeq = 0, fitPin = null, fitDrag = -1, fitTimer = 0, fitLast = -1, streams = [], pending = new Map(), timers = [], lastState = null, hostBeat = 0, relayLive = false, chipsKey = '', addTimer = 0, statsData = {}, shotList = [], repSel = 0, repAuto = true, repSpd = 1, repT0 = 0, repRaf = 0, armed = null, armTimer = 0, worldImg = null;
+  let room = '', myId = '', acks = {}, tab = 'run', pvStream = null, wantTimer = 0, pvImg = null, pvSeq = 0, fitPin = null, fitDrag = -1, fitTimer = 0, fitLast = -1, streams = [], pending = new Map(), timers = [], lastState = null, hostBeat = 0, relayLive = false, gamesKey = '', shownIds = [], shownHold = 0, pendTile = null, pendTimer = 0, addTimer = 0, statsData = {}, shotList = [], repSel = 0, repAuto = true, repSpd = 1, repT0 = 0, repRaf = 0, armed = null, armTimer = 0, worldImg = null;
   const repImgs = new Map();
   const say = (id, msg) => { el(id).textContent = msg; };
 
@@ -72,7 +72,7 @@ function runManager(){
     timers.push(setInterval(beat, 5000), setInterval(strip, 2000));
     strip(); render();
   }
-  function stop(){ srKey = ''; stopPreview(); cancelAnimationFrame(repRaf); repRaf = 0; statsData = {}; shotList = []; repImgs.clear(); streams.forEach(s => s.close()); streams = []; timers.forEach(clearInterval); timers = []; pending.clear(); lastState = null; hostBeat = 0; relayLive = false; chipsKey = ''; }
+  function stop(){ srKey = ''; stopPreview(); cancelAnimationFrame(repRaf); repRaf = 0; statsData = {}; shotList = []; repImgs.clear(); streams.forEach(s => s.close()); streams = []; timers.forEach(clearInterval); timers = []; pending.clear(); lastState = null; hostBeat = 0; relayLive = false; gamesKey = ''; pickClose(); }
   function showJoin(){ stop(); room = ''; el('mgrJoin').hidden = false; el('mgrRun').hidden = true; el('mgrAdd').hidden = true; el('mgrUnpair').hidden = true; el('mgrCodeIn').focus(); }
 
   function setDot(id, s){ el(id).dataset.s = s; }
@@ -95,12 +95,14 @@ function runManager(){
     const r = el('mgrResult');
     if (st.result){ r.hidden = false; r.dataset.tone = st.result.tone || ''; say('mgrResTitle', st.result.title || ''); say('mgrResDetail', st.result.detail || ''); } else r.hidden = true;
     if (st.hole){ const done = st.hole.strokes.filter(x => x != null); say('mgrHole', 'Par ' + st.hole.par + ' · score ' + (done.length ? done.join(' / ') : '—') + (st.hole.final ? ' · hole complete' : '')); } else say('mgrHole', '');
-    const key = (st.games || []).join('|');
-    if (key !== chipsKey){
-      chipsKey = key; const box = el('mgrChips'); box.textContent = '';
-      (st.games || []).forEach((name, i) => { const b = document.createElement('button'); b.className = 'chip tc'; b.type = 'button'; b.textContent = name; b.dataset.idx = String(i); box.append(b); });
+    const gkey = (st.games || []).join('|') + '#' + (st.gids || []).join('|') + '#' + (st.shown || []).join(',');
+    if (gkey !== gamesKey){
+      gamesKey = gkey; const fromHost = (st.shown || []).map(i => (st.gids || [])[i]).filter(Boolean);
+      if (Date.now() < shownHold && fromHost.join() !== shownIds.join()) gamesKey = '';        // just changed here: ignore the Host's older list until it catches up
+      else shownIds = fromHost;
+      renderPick(st); renderShown(st);
     }
-    el('mgrChips').querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', String(Number(c.dataset.idx) === st.game.idx)));
+    else if (!el('mgrPick').hidden) markPickCurrent(st.game.idx);
     const l = st.live || {}, tb = el('mgrTrackBtn');
     tb.textContent = l.on ? 'Pause tracking' : 'Start tracking'; tb.setAttribute('aria-pressed', String(!!l.on)); tb.disabled = !l.src || !l.cal;
     el('mgrHoldBtn').setAttribute('aria-pressed', String(!!st.hold)); el('mgrHoldBtn').textContent = st.hold ? 'Resume game' : 'Hold screen';
@@ -234,6 +236,42 @@ function runManager(){
     el('mgrWorld').closest('.d-world').hidden = !places.length && !here.length;
   }
   // Two taps for anything that changes the game: the first arms the key, the second sends it.
+  // ---------- game picker (overlay on the Run tab) and Setup, Games shown ----------
+  const pickOpen = () => !el('mgrPick').hidden;
+  function pickClose(){ clearTimeout(pendTimer); pendTile = null; el('mgrPick').hidden = true; }
+  function pickShow(){ if (!lastState || !lastState.game) return; renderPick(lastState); el('mgrPick').hidden = false; const c = el('mgrPickGrid').querySelector('.gk[aria-pressed="true"]') || el('mgrPickGrid').querySelector('.gk'); if (c) c.focus(); }
+  function markPickCurrent(idx){ el('mgrPickGrid').querySelectorAll('.gk').forEach(t => t.setAttribute('aria-pressed', String(Number(t.dataset.idx) === idx))); }
+  function renderPick(st){
+    const box = el('mgrPickGrid'); box.textContent = ''; pendTile = null; clearTimeout(pendTimer);
+    const names = st.games || [], ids = st.gids || [];
+    ids.map((id, i) => shownIds.includes(id) ? i : -1).filter(i => i >= 0).forEach((idx, k) => box.append(pickTile({id: ids[idx], name: names[idx]}, idx + 1, idx, k)));
+    markPickCurrent(st.game ? st.game.idx : -1);
+  }
+  function pickTap(tile){                 // the first tap arms the tile (dashed outline, TAP AGAIN); the second tap changes the game
+    if (pendTile === tile){ clearTimeout(pendTimer); pendTile = null; pickClose(); send('game', {idx: Number(tile.dataset.idx)}); return; }
+    if (pendTile) pendTile.classList.remove('pend');
+    clearTimeout(pendTimer); pendTile = tile; tile.classList.add('pend');
+    pendTimer = setTimeout(() => { tile.classList.remove('pend'); if (pendTile === tile) pendTile = null; }, 3000);
+  }
+  const SHOWN_REC = ['map', 'timeline', 'periodic', 'ttt', 'bowling', 'gallery'];
+  function renderShown(st){
+    const list = el('mgrShownList'), names = st.games || [], ids = st.gids || [];
+    list.textContent = '';
+    ids.forEach((id, i) => {
+      const on = shownIds.includes(id), row = document.createElement('div'); row.className = 'gs-row' + (on ? '' : ' off');
+      const th = document.createElement('span'); th.className = 'gs-th'; const p = typeof GAME_PREVIEWS !== 'undefined' && GAME_PREVIEWS[id]; if (p){ const im = document.createElement('img'); im.alt = ''; im.src = p.img; th.append(im); }
+      const nm = document.createElement('span'); nm.className = 'gs-nm'; const sm = document.createElement('small'); sm.textContent = String(i + 1).padStart(2, '0'); const b = document.createElement('b'); b.textContent = names[i]; nm.append(sm, b);
+      const sw = document.createElement('span'); sw.className = 'gs-sw'; sw.setAttribute('role', 'group'); sw.setAttribute('aria-label', names[i] + ' shown to players');
+      [['Off', false], ['On', true]].forEach(([t, v]) => { const k = document.createElement('button'); k.type = 'button'; k.className = 'gs-k' + (on === v ? (v ? ' on' : ' on2') : ''); k.textContent = t; k.dataset.gid = id; k.dataset.on = v ? '1' : '0'; k.setAttribute('aria-pressed', String(on === v)); sw.append(k); });
+      row.append(th, nm, sw); list.append(row);
+    });
+    say('mgrShownN', shownIds.length + ' of ' + ids.length + ' on');
+  }
+  function setShown(ids){
+    if (!ids.length){ say('mgrShownMsg', 'Leave at least one game on.'); return; }
+    shownIds = ids; shownHold = Date.now() + 2500; say('mgrShownMsg', ''); if (lastState) renderShown(lastState);
+    send('shown', {ids});
+  }
   function disarm(){ clearTimeout(armTimer); if (armed){ armed.textContent = armed.dataset.t; delete armed.dataset.armed; armed = null; } }
   function confirmTap(b){
     if (armed === b){ disarm(); return true; }
@@ -272,7 +310,13 @@ function runManager(){
     }
   }
   root.addEventListener('click', e => {
+    if (e.target === el('mgrPick')){ pickClose(); return; }                 // a tap on the dark area closes the picker
     const b = e.target.closest('button'); if (!b) return;
+    if (b.classList.contains('gk')){ pickTap(b); return; }
+    if (b.id === 'mgrPickBtn'){ pickShow(); return; }
+    if (b.classList.contains('gs-k')){ const id = b.dataset.gid, on = b.dataset.on === '1'; setShown(on ? (shownIds.includes(id) ? shownIds : shownIds.concat(id)) : shownIds.filter(x => x !== id)); return; }
+    if (b.id === 'mgrShownRec'){ setShown(SHOWN_REC.filter(id => ((lastState && lastState.gids) || []).includes(id))); return; }
+    if (b.id === 'mgrShownAll'){ setShown((lastState && lastState.gids) || []); return; }
     if (b.classList.contains('tc') && !confirmTap(b)) return;
     if (b.dataset.spd){ repSpd = Number(b.dataset.spd); el('mgrRepSpd').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); repT0 = performance.now(); return; }
     if (b.dataset.shot){ repSel = Number(b.dataset.shot); repAuto = repSel === shotList.length - 1; repT0 = performance.now(); renderDash(); return; }
@@ -280,8 +324,8 @@ function runManager(){
     else if (b.classList.contains('mgr-tab')) showTab(b.dataset.tab);
     else if (b.dataset.nudge) nudge(b.dataset.nudge);
     else if (b.dataset.opt) send('opt', {k: b.dataset.opt});
-    else if (b.classList.contains('chip') && b.dataset.idx !== undefined) send('game', {idx: Number(b.dataset.idx)});
   });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && pickOpen()) pickClose(); });
   el('mgrTrackBtn').addEventListener('click', () => send('track', {on: !(lastState && lastState.live && lastState.live.on)}));
   el('mgrTrackBtn2').addEventListener('click', () => send('track', {on: !(lastState && lastState.live && lastState.live.on)}));
   el('mgrFitBtn').addEventListener('click', () => send('fit', {on: !(lastState && lastState.setup && lastState.setup.fit)}));

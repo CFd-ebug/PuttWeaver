@@ -71,6 +71,13 @@
             <label class="check"><input type="checkbox" id="mgrFitCoarse"> Big steps</label>
           </div>
         </div>
+        <div class="card gs-card" id="mgrShownCard">
+          <div class="gs-head"><div class="eyebrow">Games shown</div><span class="gs-count mono" id="mgrShownN"></span>
+            <span class="gs-btns"><button class="btn key small" id="mgrShownRec" type="button">Recommended</button><button class="btn key small" id="mgrShownAll" type="button">All on</button></span></div>
+          <p class="help">Players are offered the games switched on. Next and Previous game skip the others. The Evaluator page always has every game.</p>
+          <div class="gs-list" id="mgrShownList"></div>
+          <p class="help" id="mgrShownMsg" role="status" aria-live="polite"></p>
+        </div>
       </div>
       <div class="mgr-grid" id="mgrTabDebug" hidden>
         <div class="card mgr-stats">
@@ -132,10 +139,10 @@
               <button class="btn key tc" data-cmd="restart" type="button">Restart game</button>
               <button class="btn key tc" data-cmd="skip" type="button">Skip round</button>
               <button class="btn key tc" data-cmd="rearm" type="button">Retake empty-sheet photo</button>
+              <button class="btn key" id="mgrPickBtn" type="button">Pick a game</button>
               <button class="btn key" id="mgrTrackBtn" type="button" aria-pressed="false">Pause tracking</button>
               <button class="btn key" id="mgrHoldBtn" type="button" aria-pressed="false">Hold screen</button>
             </div>
-            <div class="mgr-chips" id="mgrChips" role="group" aria-label="Choose a game"></div>
             <p class="help" id="mgrCmdMsg" role="status" aria-live="polite"></p>
           </section>
         </div>
@@ -158,6 +165,12 @@
         </div>
       </div>
     </div>
+      <div class="gk-ov" id="mgrPick" hidden>
+        <div class="gk-card" role="dialog" aria-modal="true" aria-labelledby="mgrPickH">
+          <h2 id="mgrPickH">Pick your game</h2>
+          <div class="gk-grid" id="mgrPickGrid"></div>
+        </div>
+      </div>
     <div class="mgr-foot">
       <button class="btn small" id="mgrAdd" type="button" hidden>Add a controller</button>
       <button class="btn small" id="mgrTest" type="button">Test connection</button>

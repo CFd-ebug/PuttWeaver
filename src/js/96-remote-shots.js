@@ -55,14 +55,15 @@ function remoteShotDone(r){
   clearTimeout(SHOTS.timer); SHOTS.timer = setTimeout(() => remoteShotSend(null), 900);         // no picture (not on the projector view)? send without
 }
 // Called from drawProj right after the game has drawn the sheet, before the ball and any banner: copies it as a small picture.
+function sheetPicture(w, q0, max){           // the sheet as the projector shows it right now, as a small JPEG data address
+  const h = Math.round(w * D / W), c = SHOTS.cv || (SHOTS.cv = document.createElement('canvas')); c.width = w; c.height = h;
+  c.getContext('2d').drawImage(cvs, -view.ox * view.T, -view.oy * view.T, W * view.T, D * view.T, 0, 0, w, h);
+  let q = q0, url = ''; for (;;){ url = c.toDataURL('image/jpeg', q); if (url.length < max || q <= 0.3) break; q -= 0.1; }
+  return url;
+}
 function remoteSnapSheet(){
   SHOTS.snap = false;
-  try {
-    const w = 480, h = Math.round(w * D / W), c = SHOTS.cv || (SHOTS.cv = document.createElement('canvas')); c.width = w; c.height = h;
-    c.getContext('2d').drawImage(cvs, -view.ox * view.T, -view.oy * view.T, W * view.T, D * view.T, 0, 0, w, h);
-    let q = 0.6, url = ''; for (;;){ url = c.toDataURL('image/jpeg', q); if (url.length < 45000 || q <= 0.3) break; q -= 0.1; }
-    remoteShotSend(url);
-  } catch (e) { remoteShotSend(null); }
+  try { remoteShotSend(sheetPicture(480, 0.6, 45000)); } catch (e) { remoteShotSend(null); }
 }
 function remoteShotSend(img){
   const rec = SHOTS.rec; if (!rec || rec.sent) return; rec.sent = true; clearTimeout(SHOTS.timer); SHOTS.snap = false;

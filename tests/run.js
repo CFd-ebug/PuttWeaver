@@ -14,6 +14,7 @@ const suite = [
   { name: 'roles: Evaluator, Host and Manager', file: 'role-check.js', timeout: 180, ok: [NO_ERRORS] },
   { name: 'console: pairing, status, commands, reconnect', file: 'console-check.js', timeout: 240, ok: [NO_ERRORS] },
   { name: 'console: dashboard, shot replays, play statistics', file: 'dashboard-check.js', timeout: 240, ok: [NO_ERRORS] },
+  { name: 'console: game picker and games shown', file: 'picker-check.js', timeout: 240, ok: [NO_ERRORS] },
   { name: 'console: Setup tab with the simulated camera', file: 'console-setup-check.js', timeout: 400, ok: [NO_ERRORS] },
   { name: 'console: Debug tab with the simulated camera', file: 'console-debug-check.js', timeout: 400, ok: [NO_ERRORS] },
   { name: 'console: event lock, wake lock, restart, cleanup', file: 'console-hardening-check.js', timeout: 400, ok: [NO_ERRORS] },
