@@ -34,6 +34,7 @@ src/js/               engine code, concatenated in filename order into one scrip
   05-role.js            roles (Evaluator, Host, Manager): resolves ROLE from the address, role switch dialog
   06-qr.js              offline QR code generator for the pairing screen
   07-relay.js           the only network code: Firebase Realtime Database REST client, streaming, self-test
+  08-gamepick.js        the Manager's game picker tiles (picture plus looping animation); before 08-manager.js, which returns before the engine starts
   08-manager.js         the Manager console and pairing helpers; the Manager returns here, before the engine starts
   10-core.js            units, physics constants, settings, helpers
   20-content.js         quiz content (timeline events and similar)
@@ -49,9 +50,9 @@ src/js/               engine code, concatenated in filename order into one scrip
   96-remote-shots.js    the Host records each shot (path, picture) and the play statistics for the console; Evaluators never count
   99-boot.js            start-up
 src/games/            one file per game, plus games.json (play order)
-src/data/             generated data: map.js (Natural Earth), elements.js (written by scripts/gen-elements.js)
+src/data/             generated data: map.js (Natural Earth), elements.js (written by scripts/gen-elements.js), previews.js (game pictures for the picker, written by scripts/gen-previews.js)
 assets/fonts/         embedded fonts and their licenses
-scripts/              build.js, serve.js, gen-elements.js
+scripts/              build.js, serve.js, gen-elements.js, gen-previews.js
 tests/                Playwright scripts (see "Testing")
 ```
 

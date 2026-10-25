@@ -16,11 +16,30 @@ function drawHold(){                                    // what the projector sh
   txt('PUTTWEAVER', W/2, D*0.42, 0.2*K, {font:'display', color:'#ffffff', maxW:W*0.9, ls:.05});
   txt('Back in a moment', W/2, D*0.62, 0.15*K, {weight:700, color:'#9fb3ff'});
 }
-const gameStep = d => { gameIdx = (gameIdx + d + GAMES.length) % GAMES.length; startGame(); if (LIVE.on) armReady(); };
+// Which games the players are offered (Setup, Games shown). Saved on the Host. The Host's own panel and the Evaluator always list every game.
+const SHOWN_KEY = 'putt-lab-shown';
+const SHOWN_DEFAULT = ['map', 'timeline', 'periodic', 'ttt', 'bowling', 'gallery'];      // not shown by default: accuracy test, crowd search, star sweep, paint wars
+function shownLoad(){
+  let ids = null; try { const a = JSON.parse(localStorage.getItem(SHOWN_KEY)); if (Array.isArray(a)) ids = a; } catch (e) {}
+  ids = (ids || SHOWN_DEFAULT).filter(id => GAMES.some(g => g.id === id));
+  return ids.length ? ids : GAMES.map(g => g.id);
+}
+let shownIds = shownLoad();
+function gameStep(d){                     // next or previous game that is shown; falls back to the plain neighbour
+  let i = gameIdx;
+  for (let n = 0; n < GAMES.length; n++){ i = (i + d + GAMES.length) % GAMES.length; if (shownIds.includes(GAMES[i].id)) break; }
+  gameIdx = i; startGame(); if (LIVE.on) armReady();
+}
 const REMOTE_CMDS = {
   next(){ gameStep(1); },
   prev(){ gameStep(-1); },
   game(a){ const i = Number(a && a.idx); if (!(i >= 0 && i < GAMES.length)) throw new Error('No such game'); gameIdx = i; startGame(); if (LIVE.on) armReady(); },
+  shown(a){
+    const ids = a && Array.isArray(a.ids) ? a.ids.filter(id => GAMES.some(g => g.id === id)) : null;
+    if (!ids || !ids.length) throw new Error('Show at least one game');
+    shownIds = GAMES.map(g => g.id).filter(id => ids.includes(id));
+    try { localStorage.setItem(SHOWN_KEY, JSON.stringify(shownIds)); } catch (e) {}
+  },
   restart(){ startGame(); if (LIVE.on) armReady(); },
   skip(){ skipRound(); },
   rearm(){ if (!LIVE.on) throw new Error('Tracking is not running'); armReady(); llog('Retaking the empty-sheet photo (from the console)'); },
@@ -136,6 +155,8 @@ function remoteSnapshot(){
     ver: BUILD.label, sheet: {w: W, d: D}, proj, hold: REMOTE.hold, mode,
     game: {idx: gameIdx, id: game.id, name: game.name, status: mode === 'over' ? 'Hole complete' : game.status(), how: game.how},
     games: GAMES.map(g => g.name),
+    gids: GAMES.map(g => g.id),
+    shown: GAMES.map((g, i) => shownIds.includes(g.id) ? i : -1).filter(i => i >= 0),
     hint: $('hint').textContent,
     result: mode === 'result' && lastResult ? {title: lastResult.title, detail: lastResult.detail || '', tone: lastResult.tone || ''} : null,
     hole: h ? {par: h.par, strokes: h.list.map(e => e.strokes == null ? null : e.strokes), final: !!h.final} : null,

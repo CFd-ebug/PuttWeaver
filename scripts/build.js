@@ -42,6 +42,7 @@ function assemble() {
     .replace('/*__GAMES__*/', () => games)
     .replace('/*__MAPDATA__*/', () => read(src('data', 'map.js')).trim())
     .replace('/*__ELEMENTS__*/', () => read(src('data', 'elements.js')).trim())
+    .replace('/*__PREVIEWS__*/', () => read(src('data', 'previews.js')).trim())
     .replace('/*__BUILD__*/', () => JSON.stringify(BUILD));
   return read(src('template.html'))
     .replace('/*__STYLES__*/', () => read(src('styles.css')))
@@ -54,7 +55,7 @@ const TEST_HOOK = `window.__lab = { tick, draw, putt, place, advance, startGame,
   select(i){ gameIdx=i; startGame(); }, set(k,v){ S[k]=v; }, setOpt(g,k,v){ setOpt(g,k,v); },
   get mode(){ return mode; }, get game(){ return game; }, get ball(){ return ball; },
   get W(){ return W; }, get D(){ return D; }, get TEE(){ return TEE; }, get shot(){ return shot; },
-  get LIVE(){ return LIVE; }, liveReport, homApply, enterProj, toggleFit, sheetCornersFrac, simCam };`;
+  get LIVE(){ return LIVE; }, liveReport, homApply, enterProj, toggleFit, sheetCornersFrac, simCam, sheetPicture };`;
 
 // ---- offline wrapper: embedded fonts + full document skeleton ----
 const fontDir = path.join(root, 'assets', 'fonts');

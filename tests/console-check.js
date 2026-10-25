@@ -71,10 +71,11 @@ function decodeQr(png) {                       // reads a QR code from an image 
     const hostGame = await txt(host.page, '#gTitle');
     check(await until(async () => (await txt(m1.page, '#mgrGame')) === hostGame), 'Manager shows the Host’s current game (' + hostGame + ')');
     check(await until(async () => /\S/.test(await txt(m1.page, '#mgrStatus'))), 'Manager shows the game status line');
-    check(await m1.page.locator('#mgrChips .chip').count() === 10, 'Manager lists all ten games');
+    await m1.page.locator('#mgrPickBtn').click();
+    check(await until(async () => (await m1.page.locator('#mgrPickGrid .gk').count()) === 6), 'Manager offers the six games that are shown');
 
     // ---- commands ----
-    await tap2(m1.page.locator('#mgrChips .chip', { hasText: 'Timeline' }));
+    await tap2(m1.page.locator('#mgrPickGrid .gk', { hasText: 'Timeline' }));
     check(await until(async () => (await txt(host.page, '#gTitle')) === 'Timeline'), 'Choosing a game on the Manager changes the Host’s game');
     check(await until(async () => /Done/.test(await txt(m1.page, '#mgrCmdMsg'))), 'The Manager shows the Host’s acknowledgement');
     check(await until(async () => (await txt(m1.page, '#mgrGame')) === 'Timeline'), 'The new game appears on the Manager');
