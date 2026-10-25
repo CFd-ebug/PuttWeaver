@@ -40,6 +40,26 @@ const PLACE_TIERS = [
   ]}
 ].map(t => ({label:t.label, color:t.color, list:t.list.map(([name,region,country,lat,lon]) => ({name, where: region ? region+', '+country : country, country, lat, lon}))}));
 
+// Map Quest result quips, shown as the result title. One is picked at random from the group that matches the miss distance.
+// A few places have their own pair, which replaces the general line. Written for this project.
+const MAP_ASK = ['Was that a putting problem or a geography problem?', 'Blame the putter, or blame the atlas?',
+  'Great aim at the wrong place, or bad aim at the right one?', 'Hard to say if that’s your stroke or your schoolwork.', 'We’ll say the green was crooked.'];
+const MAP_QUIPS = {
+  hit: ['Pinpoint. Do you live there?', 'The locals would like a word with your travel agent.', 'Somewhere, a geography teacher just felt proud.',
+    'Right on the money. Frame this one.', 'That’s not a guess, that’s a GPS.'],
+  near: ['Close enough to see it on a clear day.', 'Right neighborhood, wrong doorstep.', 'One more nudge and that was perfect.', 'You could take a bus from there.', ...MAP_ASK],
+  region: ['Right region, wrong postcard.', 'Warm. Not hot, but warm.', 'You’d get there by dinner. Maybe breakfast.', 'The general vibe was correct.', ...MAP_ASK],
+  far: ['Bold choice. Wrong, but bold.', 'That’s a connecting flight away.', 'The ball had other plans.', 'You found a place. Just not this one.', ...MAP_ASK],
+  world: ['Somewhere, a globe is spinning in disbelief.', 'Pack a bigger suitcase.', 'At least you’re on the same planet.', 'Have you considered a map?'],
+  gone: ['The ball left to explore on its own.', 'That one’s still traveling.', 'Off the edge of the known world.']
+};
+const MAP_PLACE_QUIPS = {
+  'Mount Everest': {hit:'Summit reached. No oxygen needed.', miss:'You missed the tallest thing on Earth. Impressive.'},
+  'Machu Picchu': {hit:'You found the lost city.', miss:'The Inca hid it well. So did you.'},
+  'Timbuktu': {hit:'You found the end of the earth. It’s in Mali.', miss:'Turns out it’s a real place.'},
+  'Hilo': {hit:'Aloha!', miss:'Aloha also means goodbye.'}
+};
+
 const EVENTS = [
   ['The Wright brothers make the first powered flight',1903], ['The Titanic sinks',1912], ['The Panama Canal opens',1914],
   ['US women win the right to vote (19th Amendment)',1920], ['Penicillin is discovered',1928], ['Pluto is discovered',1930],

@@ -20,6 +20,11 @@ function makeMap(){
     cache={key,c}; return c;
   }
   const cur = () => picks[num-1];
+  let lastQuip = '';
+  function quip(kind){     // a random line from the group, never the same line twice in a row
+    const l = MAP_QUIPS[kind].filter(q => q !== lastQuip);
+    return (lastQuip = l[Math.floor(Math.random()*l.length)]);
+  }
   const score = () => countdownScore(hits);
   return {
     id:'map', name:'Map Quest', reads:'rest', tapOK:true, opts:OPT,
@@ -52,14 +57,16 @@ function makeMap(){
     },
     onRest(p, why){
       const c = cur(), tx=lonX(c.lon), ty=latY(c.lat);
-      if (!p){ rows.push({name:c.name, km:null, hit:false}); last={p:null, hit:false}; return {title:'No reading', detail:`${WHY[why]} No stroke off. Score stays ${score()}.`, tone:'bad'}; }
+      if (!p){ rows.push({name:c.name, km:null, hit:false}); last={p:null, hit:false}; return {title: why === 'short' ? 'No reading' : quip('gone'), detail:`${WHY[why]} No stroke off. Score stays ${score()}.`, tone:'bad'}; }
       const lat=yLat(p.y), lon=xLon(p.x), km=hav(lat,lon,c.lat,c.lon);
       const missIn = Math.hypot(p.x-tx, p.y-ty)*12, hit = missIn <= zoneIn();
       if (hit) hits++;
       rows.push({name:c.name, km, hit}); last={p, km, hit};
+      const own = MAP_PLACE_QUIPS[c.name], title = own ? (hit ? own.hit : own.miss)
+        : quip(hit ? 'hit' : km < 500 ? 'near' : km < 1500 ? 'region' : km < 4000 ? 'far' : 'world');
       return hit
-        ? {title:'Close: −1 stroke', detail:`${fmt(km)} km from ${c.name}, ${missIn.toFixed(1)} in from the spot. Score now ${score()}.`, tone:'good'}
-        : {title:`${fmt(km)} km off`, detail:`${missIn.toFixed(1)} in from the spot; it needed to stop within ${zoneIn()} in. Score stays ${score()}.`, tone:'bad'};
+        ? {title, detail:`Close: −1 stroke. ${fmt(km)} km from ${c.name}, ${missIn.toFixed(1)} in from the spot. Score now ${score()}.`, tone:'good'}
+        : {title, detail:`${fmt(km)} km off, ${missIn.toFixed(1)} in from the spot; it needed to stop within ${zoneIn()} in. Score stays ${score()}.`, tone:'bad'};
     },
     shotInfo(){        // for the console: what the target was and how the last ball did (optional hook for any game)
       if (!last) return null;
