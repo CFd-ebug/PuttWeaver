@@ -46,12 +46,18 @@ const PLACE_TIERS = [
 const MAP_ASK = ['Great aim at the wrong place, or bad aim at the right one?'];
 const MAP_QUIPS = {
   hit: ['Pinpoint. Do you live there?', 'The locals would like a word with your travel agent.', 'Somewhere, a geography teacher just felt proud.',
-    'Right on the money. Frame this one.', 'That’s not a guess, that’s a GPS.'],
-  near: ['Close enough to see it on a clear day.', 'Right neighborhood, wrong doorstep.', 'One more nudge and that was perfect.', 'You could take a bus from there.', ...MAP_ASK],
-  region: ['Right region, wrong postcard.', 'Warm. Not hot, but warm.', 'You’d get there by dinner. Maybe breakfast.', 'The general vibe was correct.', ...MAP_ASK],
-  far: ['Bold choice. Wrong, but bold.', 'That’s a connecting flight away.', 'The ball had other plans.', 'You found a place. Just not this one.', ...MAP_ASK],
-  world: ['Somewhere, a globe is spinning in disbelief.', 'Pack a bigger suitcase.', 'At least you’re on the same planet.', 'Have you considered a map?'],
-  gone: ['The ball left to explore on its own.', 'That one’s still traveling.', 'Off the edge of the known world.']
+    'Right on the money. Frame this one.', 'That’s not a guess, that’s a GPS.',
+    'Hole in one. Well, place in one.', 'Your passport just got a gold star.', 'Cartographers hate this one trick.', 'Straight down the latitude.', 'The map called. It said thanks.'],
+  near: ['Close enough to see it on a clear day.', 'Right neighborhood, wrong doorstep.', 'One more nudge and that was perfect.', 'You could take a bus from there.',
+    'So close you could hear the locals.', 'Just outside city limits.', 'A short cab ride away. Tip generously.', 'Almost had it. The ball blinked.', 'That’s a lip-out on a global scale.', ...MAP_ASK],
+  region: ['Right region, wrong postcard.', 'Warm. Not hot, but warm.', 'You’d get there by dinner. Maybe breakfast.', 'The general vibe was correct.',
+    'You’re in the right time zone. Probably.', 'Close enough for a postcard, not for a visit.', 'The weather’s similar, at least.', 'Right part of the map, wrong pin.', 'Neighbors, not roommates.', ...MAP_ASK],
+  far: ['Bold choice. Wrong, but bold.', 'That’s a connecting flight away.', 'The ball had other plans.', 'You found a place. Just not this one.',
+    'You’ll need a layover for that one.', 'Interesting route. Not the right one.', 'That’s a different chapter of the atlas.', 'The ball took the scenic route.', 'Points for confidence.', ...MAP_ASK],
+  world: ['Somewhere, a globe is spinning in disbelief.', 'Pack a bigger suitcase.', 'At least you’re on the same planet.', 'Have you considered a map?',
+    'Did the ball get a passport?', 'That’s not a miss, that’s a relocation.', 'Different hemisphere, same enthusiasm.', 'The ball has gone international.', 'That putt needs a customs form.'],
+  gone: ['The ball left to explore on its own.', 'That one’s still traveling.', 'Off the edge of the known world.',
+    'Out of bounds and out of the country.', 'The ball went off the map. Literally.', 'That one fell off the edge of the world.']
 };
 const MAP_PLACE_QUIPS = {
   'Mount Everest': {hit:'Summit reached. No oxygen needed.', miss:'You missed the tallest thing on Earth. Impressive.'},
