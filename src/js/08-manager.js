@@ -26,7 +26,7 @@ function pairSteps(ul, rows){          // test results as a list: dot, name, det
 function runManager(){
   const el = id => document.getElementById(id);
   const root = el('mgr'); root.hidden = false;
-  let room = '', myId = '', acks = {}, streams = [], pending = new Map(), timers = [], lastState = null, hostBeat = 0, relayLive = false, chipsKey = '', addTimer = 0;
+  let room = '', myId = '', acks = {}, tab = 'run', pvStream = null, wantTimer = 0, pvImg = null, pvSeq = 0, fitPin = null, fitDrag = -1, fitTimer = 0, fitLast = -1, streams = [], pending = new Map(), timers = [], lastState = null, hostBeat = 0, relayLive = false, chipsKey = '', addTimer = 0;
   const say = (id, msg) => { el(id).textContent = msg; };
 
   function load(){ try { const v = JSON.parse(localStorage.getItem(MGR_KEY) || 'null'); if (v && v.room && v.room.length === 20) return v; } catch (e) {} return null; }
@@ -57,7 +57,7 @@ function runManager(){
 
   // ---------- running ----------
   function start(){
-    stop(); const v = load(); if (!v){ showJoin(); return; }
+    stop(); showTab('run'); const v = load(); if (!v){ showJoin(); return; }
     room = v.room; myId = v.id || relayRandom(6);
     el('mgrJoin').hidden = true; el('mgrRun').hidden = false; el('mgrAdd').hidden = false; el('mgrUnpair').hidden = false;
     streams.push(relayStream('rooms/' + room + '/state', {
@@ -71,7 +71,7 @@ function runManager(){
     timers.push(setInterval(beat, 5000), setInterval(strip, 2000));
     strip(); render();
   }
-  function stop(){ streams.forEach(s => s.close()); streams = []; timers.forEach(clearInterval); timers = []; pending.clear(); lastState = null; hostBeat = 0; relayLive = false; chipsKey = ''; }
+  function stop(){ stopPreview(); streams.forEach(s => s.close()); streams = []; timers.forEach(clearInterval); timers = []; pending.clear(); lastState = null; hostBeat = 0; relayLive = false; chipsKey = ''; }
   function showJoin(){ stop(); room = ''; el('mgrJoin').hidden = false; el('mgrRun').hidden = true; el('mgrAdd').hidden = true; el('mgrUnpair').hidden = true; el('mgrCodeIn').focus(); }
 
   function setDot(id, s){ el(id).dataset.s = s; }
@@ -104,7 +104,7 @@ function runManager(){
     tb.textContent = l.on ? 'Pause tracking' : 'Start tracking'; tb.setAttribute('aria-pressed', String(!!l.on)); tb.disabled = !l.src || !l.cal;
     el('mgrHoldBtn').setAttribute('aria-pressed', String(!!st.hold)); el('mgrHoldBtn').textContent = st.hold ? 'Resume game' : 'Hold screen';
     el('mgrBall').textContent = st.ball ? 'x ' + st.ball.x.toFixed(2) + ' ft · y ' + st.ball.y.toFixed(2) + ' ft' : 'No ball in view';
-    drawMap(st); strip();
+    drawMap(st); strip(); renderSetup(st);
   }
   function drawMap(st){
     const c = el('mgrMap'), g = c.getContext('2d'), w = c.width, h = c.height;
@@ -116,16 +116,17 @@ function runManager(){
   }
 
   // ---------- commands ----------
-  async function send(type, args){
+  const msg = t => { say('mgrCmdMsg', t); say('mgrCmdMsg2', t); };
+  async function send(type, args, quiet){
     if (!room) return;
-    say('mgrCmdMsg', 'Sending…');
+    if (!quiet) msg('Sending…');
     try {
       const r = await relayPost('rooms/' + room + '/cmd', {type, args: args || {}, ts: RELAY_TS, ttl: 8000});
       const done = new Promise(res => { pending.set(r.name, res); setTimeout(() => { if (pending.delete(r.name)) res({ok: false, error: 'No answer from the Host. Is it on and online?'}); }, 8000); });
       onAcks(acks);                       // the answer may already have arrived while this request was still finishing
       const ack = await done;
-      say('mgrCmdMsg', ack.ok ? 'Done.' : 'The Host said: ' + ack.error);
-    } catch (e) { say('mgrCmdMsg', 'Could not send: ' + e.message); }
+      if (!quiet || !ack.ok) msg(ack.ok ? 'Done.' : 'The Host said: ' + ack.error);
+    } catch (e) { msg('Could not send: ' + e.message); }
   }
   function onAcks(c){
     acks = c || {};
@@ -137,11 +138,98 @@ function runManager(){
   }
   root.addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
-    if (b.dataset.cmd) send(b.dataset.cmd);
+    if (b.dataset.cmd) { let a; try { a = b.dataset.args ? JSON.parse(b.dataset.args) : undefined; } catch (err) {} send(b.dataset.cmd, a); }
+    else if (b.classList.contains('mgr-tab')) showTab(b.dataset.tab);
+    else if (b.dataset.nudge) nudge(b.dataset.nudge);
     else if (b.classList.contains('chip') && b.dataset.idx !== undefined) send('game', {idx: Number(b.dataset.idx)});
   });
   el('mgrTrackBtn').addEventListener('click', () => send('track', {on: !(lastState && lastState.live && lastState.live.on)}));
+  el('mgrTrackBtn2').addEventListener('click', () => send('track', {on: !(lastState && lastState.live && lastState.live.on)}));
+  el('mgrFitBtn').addEventListener('click', () => send('fit', {on: !(lastState && lastState.setup && lastState.setup.fit)}));
   el('mgrHoldBtn').addEventListener('click', () => send('hold', {on: !(lastState && lastState.hold)}));
+
+
+  // ---------- Setup tab ----------
+  function showTab(name){
+    tab = name;
+    root.querySelectorAll('.mgr-tab').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
+    el('mgrTabRun').hidden = name !== 'run'; el('mgrTabSetup').hidden = name !== 'setup';
+    if (name === 'setup'){ startPreview(); render(); } else stopPreview();
+  }
+  function startPreview(){                // the Host only sends pictures while someone keeps saying they want them
+    if (pvStream || !room) return;
+    const want = () => { if (!document.hidden) relayPut('rooms/' + room + '/want/preview', RELAY_TS).catch(() => {}); };
+    want(); wantTimer = setInterval(want, 4000);
+    pvStream = relayStream('rooms/' + room + '/preview', {onData: c => { if (typeof c === 'string' && c.startsWith('data:image/')) paintPreview(c); }});
+  }
+  function stopPreview(){ if (pvStream){ pvStream.close(); pvStream = null; } clearInterval(wantTimer); wantTimer = 0; }
+  function paintPreview(url){ const img = new Image(); img.onload = () => { pvImg = img; pvSeq++; drawPv(); }; img.src = url; }
+  function drawPv(){
+    const c = el('mgrPv'); if (!pvImg) return;
+    if (c.width !== pvImg.naturalWidth || c.height !== pvImg.naturalHeight){ c.width = pvImg.naturalWidth; c.height = pvImg.naturalHeight; }
+    const g = c.getContext('2d'); g.drawImage(pvImg, 0, 0);
+    const su = lastState && lastState.setup;
+    if (su && su.quad){ g.strokeStyle = '#6f9bff'; g.lineWidth = 2; g.beginPath(); su.quad.forEach(([u, v], k) => k ? g.lineTo(u * c.width, v * c.height) : g.moveTo(u * c.width, v * c.height)); g.closePath(); g.stroke(); }
+    if (su && su.det){ g.strokeStyle = '#ff3b8d'; g.lineWidth = 2; g.beginPath(); g.arc(su.det[0] * c.width, su.det[1] * c.height, 9, 0, 7); g.stroke(); }
+    c.dataset.seq = String(pvSeq);
+    say('mgrPvNote', 'Updated ' + new Date().toLocaleTimeString() + '. Tap the ball to sample its color. The blue outline is the sheet as the calibration sees it.');
+  }
+  el('mgrPv').addEventListener('click', e => {
+    const r = el('mgrPv').getBoundingClientRect();
+    send('sampleat', {x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height});
+  });
+  function renderSetup(st){
+    const su = st.setup; if (!su || tab !== 'setup') return;
+    const box = el('mgrSetupList'), row = (step, s, text, note) => {
+      const li = box.querySelector('[data-step="' + step + '"]'); li.querySelector('.dot').dataset.s = s; li.querySelector('.st').textContent = text;
+      const n = li.querySelector('.note'); if (n && note){ n.textContent = note.t || ''; n.dataset.tone = note.tone || ''; }
+    };
+    row('cam', su.src ? 'ok' : 'no', su.src ? su.label + (su.res ? ' · ' + su.res : '') : 'Off', {t: [su.notes.cam.t, su.lock].filter(Boolean).join(' '), tone: su.notes.cam.tone});
+    row('fit', 'ok', su.pin ? 'Corners adjusted' : 'Square to the screen', {t: su.fit ? 'Adjusting: the Host is showing its test card.' : ''});
+    const c = su.cal;
+    row('cal', c ? (c.max != null && c.max > 1.5 ? 'warn' : 'ok') : 'no', c ? c.n + ' of ' + c.of + ' dots · ' + c.avg.toFixed(2) + ' in average' + (c.max != null ? ', ' + c.max.toFixed(2) + ' in worst' : '') : 'Not calibrated', su.notes.cal);
+    row('color', su.sampled ? 'ok' : 'warn', (su.method === 'ref' ? 'Empty-sheet match' : 'Color only') + ' · ' + (su.sampled ? 'sampled' : 'not sampled yet'), su.notes.color);
+    row('delay', 'ok', su.lat + ' ms');
+    const on = !!(st.live && st.live.on); row('track', on ? 'ok' : 'no', on ? 'On · ' + st.live.state : 'Off');
+    el('mgrTrackBtn2').textContent = on ? 'Pause tracking' : 'Start tracking';
+    const busy = el('mgrBusy'); busy.hidden = !su.task; busy.textContent = su.task ? su.task + '…' : '';
+    box.querySelectorAll('button').forEach(b => { b.disabled = !!su.task; });
+    const fb = el('mgrFitBtn'); fb.setAttribute('aria-pressed', String(su.fit)); fb.textContent = su.fit ? 'Done adjusting' : 'Adjust corners';
+    const lg = el('mgrSetupLog'); lg.textContent = ''; (su.log || []).forEach(m => { const li = document.createElement('li'); li.textContent = m; lg.append(li); });
+    el('mgrFitCard').hidden = !su.fit;
+    if (su.fit && fitDrag < 0 && !fitTimer && su.pin) fitPin = su.pin.map(p => p.slice());
+    drawFit(); drawPv();
+  }
+  // corner handles: a picture of the projector screen with four dots to drag, or one dot to nudge
+  const FIT_PAD = 0.08;            // the picture is inset so a corner at the very edge of the screen can still be grabbed
+  const fitIn = v => FIT_PAD + v * (1 - 2 * FIT_PAD);
+  function drawFit(){
+    const c = el('mgrFitCv'), g = c.getContext('2d'), w = c.width, h = c.height; g.fillStyle = '#10131a'; g.fillRect(0, 0, w, h);
+    g.strokeStyle = '#3d4454'; g.lineWidth = 1; g.strokeRect(fitIn(0) * w, fitIn(0) * h, (1 - 2 * FIT_PAD) * w, (1 - 2 * FIT_PAD) * h); if (!fitPin) return;
+    g.strokeStyle = '#6f9bff'; g.lineWidth = 2; g.beginPath(); fitPin.forEach(([x, y], i) => i ? g.lineTo(fitIn(x) * w, fitIn(y) * h) : g.moveTo(fitIn(x) * w, fitIn(y) * h)); g.closePath(); g.stroke();
+    const sel = Number(el('mgrFitSel').value);
+    fitPin.forEach(([x, y], i) => { g.fillStyle = i === sel ? '#ff3b8d' : '#ffffff'; g.beginPath(); g.arc(fitIn(x) * w, fitIn(y) * h, 10, 0, 7); g.fill(); g.fillStyle = '#10131a'; g.font = '700 12px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(String(i + 1), fitIn(x) * w, fitIn(y) * h + 1); });
+  }
+  function sendCorner(i){          // at most about 6 a second while dragging; the last position always goes out
+    fitLast = i; if (fitTimer) return;
+    const go = () => { fitTimer = 0; const p = fitPin[fitLast]; send('pin', {i: fitLast, x: p[0], y: p[1]}, true); };
+    fitTimer = setTimeout(go, 160);
+  }
+  function nudge(v){
+    if (!fitPin) return; const i = Number(el('mgrFitSel').value), [dx, dy] = v.split(',').map(Number), step = el('mgrFitCoarse').checked ? 0.02 : 0.004;
+    fitPin[i] = [fitPin[i][0] + dx * step, fitPin[i][1] + dy * step]; drawFit(); sendCorner(i);
+  }
+  const fitCv = el('mgrFitCv');
+  const fitXY = e => { const r = fitCv.getBoundingClientRect(); return [((e.clientX - r.left) / r.width - FIT_PAD) / (1 - 2 * FIT_PAD), ((e.clientY - r.top) / r.height - FIT_PAD) / (1 - 2 * FIT_PAD)]; };
+  fitCv.addEventListener('pointerdown', e => {
+    if (!fitPin) return; const [x, y] = fitXY(e); let best = -1, bd = 0.14;
+    fitPin.forEach((p, i) => { const d = Math.hypot((p[0] - x), (p[1] - y) * 0.63); if (d < bd){ bd = d; best = i; } });
+    if (best < 0) return; fitDrag = best; el('mgrFitSel').value = String(best); fitCv.setPointerCapture(e.pointerId); e.preventDefault(); drawFit();
+  });
+  fitCv.addEventListener('pointermove', e => { if (fitDrag < 0) return; const [x, y] = fitXY(e); fitPin[fitDrag] = [Math.min(1, Math.max(0, x)), Math.min(1, Math.max(0, y))]; drawFit(); sendCorner(fitDrag); });
+  const fitEnd = () => { fitDrag = -1; };
+  fitCv.addEventListener('pointerup', fitEnd); fitCv.addEventListener('pointercancel', fitEnd);
+  el('mgrFitSel').addEventListener('change', drawFit);
 
   // ---------- footer: add a controller, test, unpair ----------
   el('mgrAdd').addEventListener('click', async () => {

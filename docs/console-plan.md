@@ -1,6 +1,6 @@
 # Management console and roles: plan
 
-Status: agreed design. Phase 0 (roles and landing) and phase 1 (relay, pairing, Run tab) are built; the Setup and Debug tabs and the hardening are not. Written so that any contributor's Claude can build a piece of it without re-deriving the decisions. Update this file when a decision changes.
+Status: agreed design. Phases 0 (roles and landing), 1 (relay, pairing, Run tab) and 2 (Setup tab) are built; the Debug tab and the hardening are not. Written so that any contributor's Claude can build a piece of it without re-deriving the decisions. Update this file when a decision changes.
 
 ## Why
 
@@ -153,7 +153,7 @@ Claude Code cloud sessions cannot reach `firebaseio.com` (the network allowlist 
 
 0. **Roles and landing (built).** Role resolution, Evaluator view with Host controls hidden, role links, role switch. No network. Acceptance: opening the plain address shows the Evaluator view; every game plays; no camera or projector controls are visible; the existing tests still pass.
 1. **Relay, pairing and Run tab (built).** `06-qr.js`, `07-relay.js`, `08-manager.js`, `95-remote-host.js`, the Manager shell and Run tab, pairing window with QR and typed code, status strip, command expiry and acknowledgement, Host offline banner. Acceptance: pair two pages, change game, restart and skip from the Manager, watch the ball position on the mini-map, kill the Host and see the offline banner, and confirm an expired command is ignored.
-2. **Setup tab.** Checklist, calibration, ball color, delay, the preview still and corner dragging.
+2. **Setup tab (built).** Checklist (camera, corners, calibration, ball color, delay, tracking), camera still with tap-to-sample, corner handles that can be dragged or nudged.
 3. **Debug tab.** Overlays, tuning, log, report copy.
 4. **Hardening.** Event lock, wake lock, reconnect after reboot, per-room cleanup, docs.
 
@@ -179,3 +179,11 @@ Claude Code cloud sessions cannot reach `firebaseio.com` (the network allowlist 
 - `tests/fake-rtdb.js` is a stand-in database with the same rules as the real one; `tests/console-check.js` runs a Host and two Managers against it.
 
 Not covered by any automated test, because the sandbox cannot reach `firebaseio.com`: the real database. Tap **Test connection** once from a phone to confirm it.
+
+## What phase 2 built
+
+- **Commands** (all in `REMOTE_CMDS`, `95-remote-host.js`): `cam` (phone or simulated camera), `camoff`, `lock` (exposure, white balance, focus), `calibrate`, `delay`, `sample` (ball in the ring), `sampleat` (tap in the picture, as fractions), `fit` (corner adjusting on or off), `pin` (one corner, as fractions of the projector screen), `pinrot`, `pinreset`. Long ones (`cam`, `lock`, `calibrate`, `delay`, `sample`) go through `remoteTask`: the command is acknowledged at once, `setup.task` names what is running, and results appear in `setup.notes`, the same text the Host's live panel shows. Only one at a time.
+- **State:** `setup` (camera, calibration, corners, ball sample, delay, notes, last log lines, the sheet outline and detected ball in picture coordinates) is only included while a Manager has the Setup tab open.
+- **Pictures:** the Manager writes `want/preview` every 4 s while the Setup tab is visible. The Host sends `rooms/<room>/preview` (a JPEG data URL from the camera processing canvas, about 17 kB) once a second while that timestamp is under 12 s old. Leaving the tab, or locking the phone, stops it within about 12 s.
+- **Corners:** the plan said "drag corners on the still". The still cannot be used directly, because the corner handles are positions on the projector screen and the camera-to-screen mapping is unknown until after calibration. So the Manager shows a small picture of the projector screen with four handles (drag, or pick one and nudge) next to the live still, and you watch the still to see the effect. The Host's own on-screen handles still work.
+- Not in the Setup tab yet: camera device and resolution pickers, exposure time and zoom sliders (they are on the Host's live panel). They fit naturally in the Debug tab or a later Setup addition.

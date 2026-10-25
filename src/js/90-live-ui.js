@@ -520,13 +520,16 @@ function bindLivePanel(){
   $('lpCopy').addEventListener('click', copyReport);
   $('lpSave').addEventListener('click', saveReport);
   $('lpFit').addEventListener('click', () => toggleFit());
-  $('lpRot').addEventListener('click', () => { if (!LIVE.pin) LIVE.pin = sheetCornersFrac(); LIVE.pin = [LIVE.pin[2], LIVE.pin[3], LIVE.pin[0], LIVE.pin[1]]; liveSave(); placeHandles(); llog('Projection rotated 180°; calibrate again'); renderLiveStatus(); });
-  $('lpFitReset').addEventListener('click', () => { LIVE.pin = null; liveSave(); placeHandles(); llog('Corner fit reset; calibrate again'); renderLiveStatus(); });
+  $('lpRot').addEventListener('click', rotatePin);
+  $('lpFitReset').addEventListener('click', resetPin);
   $('lpPreview').addEventListener('click', e => { if (!LIVE.pw) return; const r = $('lpPreview').getBoundingClientRect(); sampleAtPx(Math.round((e.clientX-r.left)/r.width*LIVE.pw), Math.round((e.clientY-r.top)/r.height*LIVE.ph)); });
   $('btnLive').addEventListener('click', () => showLivePanel(true));
 }
 
 // ---- projector corner fit: drag the four corners until the projected test card is a true rectangle ----
+function rotatePin(){ if (!LIVE.pin) LIVE.pin = sheetCornersFrac(); LIVE.pin = [LIVE.pin[2], LIVE.pin[3], LIVE.pin[0], LIVE.pin[1]]; liveSave(); placeHandles(); llog('Projection rotated 180°; calibrate again'); renderLiveStatus(); }
+function resetPin(){ LIVE.pin = null; if (LIVE.fitting) LIVE.pin = sheetCornersFrac(); liveSave(); placeHandles(); llog('Corner fit reset; calibrate again'); renderLiveStatus(); }
+function setPinCorner(i, x, y){ if (!LIVE.pin) LIVE.pin = sheetCornersFrac(); LIVE.pin[i] = [clamp(x, -0.2, 1.2), clamp(y, -0.2, 1.2)]; placeHandles(); liveSave(); }
 function toggleFit(force){
   LIVE.fitting = force != null ? force : !LIVE.fitting;
   if (LIVE.fitting && !LIVE.pin) LIVE.pin = sheetCornersFrac();
