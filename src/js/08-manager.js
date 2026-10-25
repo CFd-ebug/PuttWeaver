@@ -26,7 +26,8 @@ function pairSteps(ul, rows){          // test results as a list: dot, name, det
 function runManager(){
   const el = id => document.getElementById(id);
   const root = el('mgr'); root.hidden = false;
-  let room = '', myId = '', acks = {}, tab = 'run', pvStream = null, wantTimer = 0, pvImg = null, pvSeq = 0, fitPin = null, fitDrag = -1, fitTimer = 0, fitLast = -1, streams = [], pending = new Map(), timers = [], lastState = null, hostBeat = 0, relayLive = false, chipsKey = '', addTimer = 0;
+  let room = '', myId = '', acks = {}, tab = 'run', pvStream = null, wantTimer = 0, pvImg = null, pvSeq = 0, fitPin = null, fitDrag = -1, fitTimer = 0, fitLast = -1, streams = [], pending = new Map(), timers = [], lastState = null, hostBeat = 0, relayLive = false, chipsKey = '', addTimer = 0, statsData = {}, shotList = [], repSel = 0, repAuto = true, repSpd = 1, repT0 = 0, repRaf = 0, armed = null, armTimer = 0, worldImg = null;
+  const repImgs = new Map();
   const say = (id, msg) => { el(id).textContent = msg; };
 
   function load(){ try { const v = JSON.parse(localStorage.getItem(MGR_KEY) || 'null'); if (v && v.room && v.room.length === 20) return v; } catch (e) {} return null; }
@@ -61,7 +62,7 @@ function runManager(){
     room = v.room; myId = v.id || relayRandom(6);
     el('mgrJoin').hidden = true; el('mgrRun').hidden = false; el('mgrAdd').hidden = false; el('mgrUnpair').hidden = false;
     streams.push(relayStream('rooms/' + room + '/state', {
-      onData: c => { lastState = c; render(); },
+      onData: c => { lastState = c; render(); dashSync(c); },
       onStatus: s => { relayLive = s === 'live'; strip(); }
     }));
     streams.push(relayStream('rooms/' + room + '/hb', {onData: c => { hostBeat = c && typeof c.host === 'number' ? c.host : 0; strip(); }}));
@@ -71,7 +72,7 @@ function runManager(){
     timers.push(setInterval(beat, 5000), setInterval(strip, 2000));
     strip(); render();
   }
-  function stop(){ stopPreview(); streams.forEach(s => s.close()); streams = []; timers.forEach(clearInterval); timers = []; pending.clear(); lastState = null; hostBeat = 0; relayLive = false; chipsKey = ''; }
+  function stop(){ srKey = ''; stopPreview(); cancelAnimationFrame(repRaf); repRaf = 0; statsData = {}; shotList = []; repImgs.clear(); streams.forEach(s => s.close()); streams = []; timers.forEach(clearInterval); timers = []; pending.clear(); lastState = null; hostBeat = 0; relayLive = false; chipsKey = ''; }
   function showJoin(){ stop(); room = ''; el('mgrJoin').hidden = false; el('mgrRun').hidden = true; el('mgrAdd').hidden = true; el('mgrUnpair').hidden = true; el('mgrCodeIn').focus(); }
 
   function setDot(id, s){ el(id).dataset.s = s; }
@@ -89,7 +90,7 @@ function runManager(){
 
   function render(){
     const st = lastState;
-    if (!st || !st.game){ say('mgrGame', 'Waiting for the Host…'); say('mgrStatus', ''); say('mgrHint', 'The Host sends its status as soon as it sees this console.'); el('mgrResult').hidden = true; say('mgrHole', ''); drawMap(null); return; }
+    if (!st || !st.game){ renderDash(); say('mgrGame', 'Waiting for the Host…'); say('mgrStatus', ''); say('mgrHint', 'The Host sends its status as soon as it sees this console.'); el('mgrResult').hidden = true; say('mgrHole', ''); drawMap(null); return; }
     say('mgrGame', st.game.name); say('mgrStatus', st.game.status || ''); say('mgrHint', st.hint || '');
     const r = el('mgrResult');
     if (st.result){ r.hidden = false; r.dataset.tone = st.result.tone || ''; say('mgrResTitle', st.result.title || ''); say('mgrResDetail', st.result.detail || ''); } else r.hidden = true;
@@ -97,14 +98,14 @@ function runManager(){
     const key = (st.games || []).join('|');
     if (key !== chipsKey){
       chipsKey = key; const box = el('mgrChips'); box.textContent = '';
-      (st.games || []).forEach((name, i) => { const b = document.createElement('button'); b.className = 'chip'; b.type = 'button'; b.textContent = name; b.dataset.idx = String(i); box.append(b); });
+      (st.games || []).forEach((name, i) => { const b = document.createElement('button'); b.className = 'chip tc'; b.type = 'button'; b.textContent = name; b.dataset.idx = String(i); box.append(b); });
     }
     el('mgrChips').querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', String(Number(c.dataset.idx) === st.game.idx)));
     const l = st.live || {}, tb = el('mgrTrackBtn');
     tb.textContent = l.on ? 'Pause tracking' : 'Start tracking'; tb.setAttribute('aria-pressed', String(!!l.on)); tb.disabled = !l.src || !l.cal;
     el('mgrHoldBtn').setAttribute('aria-pressed', String(!!st.hold)); el('mgrHoldBtn').textContent = st.hold ? 'Resume game' : 'Hold screen';
     el('mgrBall').textContent = st.ball ? 'x ' + st.ball.x.toFixed(2) + ' ft · y ' + st.ball.y.toFixed(2) + ' ft' : 'No ball in view';
-    drawMap(st); strip(); renderSetup(st); renderDebug(st);
+    drawMap(st); strip(); renderSetup(st); renderDebug(st); renderDash();
   }
   function drawMap(st){
     const c = el('mgrMap'), g = c.getContext('2d'), w = c.width, h = c.height;
@@ -114,6 +115,139 @@ function runManager(){
     g.fillStyle = '#8b94a8'; g.font = '600 12px sans-serif'; g.textAlign = 'center'; g.fillText('TEE EDGE', w / 2, oy + sd * s + 14);
     if (st.ball){ g.fillStyle = '#2343d6'; g.beginPath(); g.arc(ox + st.ball.x * s, oy + st.ball.y * s, 8, 0, 7); g.fill(); g.strokeStyle = '#fff'; g.lineWidth = 2; g.stroke(); }
   }
+
+
+  // ---------- the dashboard: this hole, everyone's results, the replay ----------
+  const mk = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+  const fmtN = n => Math.round(n).toLocaleString('en-US');
+  const rateOf = p => p && p.n ? p.close / p.n : 0;
+  const rateClass = r => r >= 0.6 ? 'easy' : r < 0.35 ? 'hard' : 'mid';
+  // Shots and totals are fetched when the Host's state says they changed, which saves streams (a browser keeps only a few connections open).
+  let srKey = '', srBusy = false, srAgain = false;
+  async function dashSync(st){
+    const k = st && st.sr ? st.sr.join(',') : ''; if (!room || !k || k === srKey) return;
+    if (srBusy){ srAgain = true; return; }
+    srBusy = true; srKey = k;
+    try {
+      const [sh, sx] = await Promise.all([relayGet('rooms/' + room + '/shots'), relayGet('rooms/' + room + '/stats')]);
+      statsData = sx || {}; onShots(sh);
+    } catch (e) { srKey = ''; }
+    srBusy = false; if (srAgain){ srAgain = false; dashSync(lastState); }
+  }
+  function onShots(c){                                              // Firebase may hand back an array when the keys are small whole numbers
+    const list = (Array.isArray(c) ? c : c ? Object.values(c) : []).filter(x => x && typeof x === 'object' && x.n);
+    list.sort((a, b) => a.n - b.n);
+    const had = shotList.length; shotList = list;
+    if (list.length > had && (repAuto || repSel >= list.length || had === 0)){ repSel = list.length - 1; repAuto = true; repT0 = performance.now(); }     // a new shot: loop it until the next one
+    if (repSel >= list.length) repSel = Math.max(0, list.length - 1);
+    renderDash();
+  }
+  function renderDash(){
+    renderLadder(); renderShots(); renderReplayBar(); drawWorld(); startReplay();
+  }
+  function renderLadder(){
+    const box = el('mgrLadder'), st = lastState, gid = st && st.game ? st.game.id : '', h = st && st.hole;
+    const g = (statsData.holes && statsData.holes[gid]) || {}, n = [5, 4, 3, 2, 1].reduce((a, k) => a + (Number(g[k]) || 0), 0), mx = Math.max(1, ...[5, 4, 3, 2, 1].map(k => Number(g[k]) || 0));
+    const done = h ? h.strokes.filter(x => x != null) : [], mine = done.length ? done[0] : null;
+    const avg = n ? [5, 4, 3, 2, 1].reduce((a, k) => a + k * (Number(g[k]) || 0), 0) / n : 0;
+    box.textContent = '';
+    if (!h){ box.append(mk('div', 'eyebrow', 'Hole score'), mk('p', 'd-empty', 'This game has no hole score.')); return; }
+    box.append(mk('div', 'eyebrow', n ? 'Everyone’s holes · ' + n + ' played · avg ' + avg.toFixed(1) : 'Hole score · nobody has finished one yet'));
+    const pips = mk('div', 'd-pips'), dist = mk('div', 'd-dist');
+    for (const k of [5, 4, 3, 2, 1]){
+      const pip = mk('div', 'd-pip' + (k === h.par ? ' par' : '') + (mine === k ? (h.final ? ' on' : ' live') : ''), String(k));
+      pip.append(mk('small', '', mine === k ? (h.final ? 'YOU' : 'NOW') : k === h.par ? 'PAR' : k === 1 ? 'BEST' : ''));
+      pips.append(pip);
+      const c = Number(g[k]) || 0, cell = mk('div', mine === k ? 'me' : '');
+      cell.append(mk('span', '', n ? Math.round(c / n * 100) + '%' : '·')); const bar = mk('i'); bar.style.height = Math.max(4, Math.round(c / mx * 100)) + '%'; cell.append(bar); dist.append(cell);
+    }
+    box.append(pips, dist);
+  }
+  function renderShots(){
+    const box = el('mgrShots'), key = JSON.stringify([shotList.map(x => [x.n, x.title]), statsData.places]);
+    if (box.dataset.key === key) return; box.dataset.key = key; box.textContent = '';
+    if (!shotList.length){ box.append(mk('p', 'd-empty', 'No shots yet.')); return; }
+    for (const r of shotList){
+      const card = mk('div', 'd-shot ' + (r.tone || '')); card.append(mk('span', 'no', String(r.n).padStart(2, '0')));
+      const body = mk('div', 'sb'); body.append(mk('b', '', (r.tgt ? r.tgt.name + ' · ' : '') + r.title), mk('span', '', r.detail)); card.append(body);
+      const pl = r.tgt && statsData.places ? statsData.places[r.tgt.name] : null;
+      if (pl && pl.n){
+        const rate = rateOf(pl), st = mk('div', 'd-pst ' + rateClass(rate));
+        st.append(mk('span', 'lab', 'All players on ' + r.tgt.name), mk('b', '', Math.round(rate * 100) + '%'), mk('small', '', 'get close' + (pl.nk ? ' · avg miss ' + fmtN(pl.ksum / pl.nk) + ' km' : '')));
+        const m = mk('div', 'd-meter'), i = mk('i'); i.style.width = Math.round(rate * 100) + '%'; m.append(i); st.append(m); card.append(st);
+      }
+      box.append(card);
+    }
+  }
+  function renderReplayBar(){
+    const sw = el('mgrRepSw'), key = shotList.map(x => x.n).join(',') + ':' + repSel;
+    if (sw.dataset.key !== key){
+      sw.dataset.key = key; sw.textContent = '';
+      shotList.forEach((r, i) => { const b = mk('button', i === repSel ? 'on' : '', String(r.n).padStart(2, '0')); b.type = 'button'; b.dataset.shot = String(i); b.setAttribute('aria-pressed', String(i === repSel)); sw.append(b); });
+    }
+    const r = shotList[repSel];
+    say('mgrRepHead', r ? 'Replay · shot ' + String(r.n).padStart(2, '0') : 'Replay');
+    say('mgrRepInfo', r ? (r.tgt ? r.tgt.name + ' · ' : '') + (r.off != null ? r.off + ' in off' : r.title) : 'Waiting for the next shot');
+  }
+  // The replay loops until the next shot arrives. The picture is what the projector showed; the ball and its path are drawn over it.
+  function startReplay(){ if (!repRaf && shotList.length && !el('mgrTabRun').hidden) repRaf = requestAnimationFrame(replayFrame); }
+  function replayImg(r){
+    if (!r.img) return null;
+    let im = repImgs.get(r.n + ':' + r.img.length);
+    if (!im){ im = new Image(); im.src = r.img; repImgs.set(r.n + ':' + r.img.length, im); }
+    return im.complete && im.naturalWidth ? im : null;
+  }
+  function replayFrame(now){
+    repRaf = 0;
+    const r = shotList[repSel], c = el('mgrReplay'); if (!r || el('mgrTabRun').hidden || document.hidden) return;
+    const g = c.getContext('2d'), w = c.width, h = c.height, sx = w / r.sw, sy = h / r.sd, im = replayImg(r);
+    g.clearRect(0, 0, w, h);
+    if (im) g.drawImage(im, 0, 0, w, h); else { g.fillStyle = '#eef0f7'; g.fillRect(0, 0, w, h); g.strokeStyle = '#8b94a8'; g.lineWidth = 3; g.strokeRect(1.5, 1.5, w - 3, h - 3); }
+    if (r.tgt && !im){ g.strokeStyle = '#1a3cff'; g.lineWidth = 3; g.setLineDash([10, 8]); g.beginPath(); g.arc(r.tgt.x * sx, r.tgt.y * sy, r.tgt.r * sx, 0, 7); g.stroke(); g.setLineDash([]); }
+    const path = r.path || [], total = path.length ? Math.max(0.5, path[path.length - 1][2] / 1000) : 0.5, hold = 1.2;
+    const t = ((now - repT0) / 1000 * repSpd) % (total + hold), tt = Math.min(t, total) * 1000;
+    const col = r.hit === false || r.tone === 'bad' ? '#e5002b' : '#1a3cff';
+    if (path.length){
+      let upto = 0; while (upto < path.length - 1 && path[upto + 1][2] <= tt) upto++;
+      const a = path[upto], b = path[Math.min(path.length - 1, upto + 1)], f = b[2] > a[2] ? Math.min(1, (tt - a[2]) / (b[2] - a[2])) : 0;
+      const bx = a[0] + (b[0] - a[0]) * f, by = a[1] + (b[1] - a[1]) * f;
+      g.strokeStyle = col; g.lineWidth = Math.max(3, w / 120); g.lineCap = 'round'; g.lineJoin = 'round'; g.beginPath(); g.moveTo(path[0][0] * sx, path[0][1] * sy);
+      for (let i = 1; i <= upto; i++) g.lineTo(path[i][0] * sx, path[i][1] * sy); g.lineTo(bx * sx, by * sy); g.stroke();
+      ball(g, bx * sx, by * sy, w);
+    } else if (r.rest) ball(g, r.rest[0] * sx, r.rest[1] * sy, w);
+    repRaf = requestAnimationFrame(replayFrame);
+  }
+  function ball(g, x, y, w){ const R = Math.max(7, w / 55); g.fillStyle = '#fff'; g.strokeStyle = '#0a0a0a'; g.lineWidth = 3; g.beginPath(); g.arc(x, y, R, 0, 7); g.fill(); g.stroke(); g.fillStyle = '#0a0a0a'; g.beginPath(); g.arc(x, y, R / 3, 0, 7); g.fill(); }
+  function drawWorld(){
+    const c = el('mgrWorld'), g = c.getContext('2d'), w = c.width, h = c.height, places = statsData.places ? Object.values(statsData.places) : [];
+    if (!worldImg){ worldImg = document.createElement('canvas'); worldImg.width = w; worldImg.height = h; try { worldMapDraw(worldImg.getContext('2d'), w, h, w / 8); } catch (e) {} }
+    g.drawImage(worldImg, 0, 0);
+    const colors = {easy: '#1a3cff', mid: '#0a0a0a', hard: '#e5002b'};
+    for (const p of places){
+      const r = 5 + Math.min(14, p.n * 0.5), k = rateClass(rateOf(p));
+      g.fillStyle = colors[k]; g.globalAlpha = 0.85; g.beginPath(); g.arc(p.x * w, p.y * h, r, 0, 7); g.fill(); g.globalAlpha = 1; g.strokeStyle = '#fff'; g.lineWidth = 2; g.stroke();
+    }
+    const here = shotList.filter(r => r.tgt);
+    g.font = '700 22px Inter, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    for (const r of here){ const x = r.tgt.x / r.sw * w, y = r.tgt.y / r.sd * h; g.fillStyle = '#0a0a0a'; g.strokeStyle = '#fff'; g.lineWidth = 3; g.beginPath(); g.rect(x - 15, y - 15, 30, 30); g.fill(); g.stroke(); g.fillStyle = '#fff'; g.fillText(String(r.n), x, y + 1); }
+    say('mgrWorldN', places.length ? places.length + ' places · ' + fmtN(places.reduce((a, p) => a + p.n, 0)) + ' tries' : 'No results yet');
+    el('mgrWorld').closest('.d-world').hidden = !places.length && !here.length;
+  }
+  // Two taps for anything that changes the game: the first arms the key, the second sends it.
+  function disarm(){ clearTimeout(armTimer); if (armed){ armed.textContent = armed.dataset.t; delete armed.dataset.armed; armed = null; } }
+  function confirmTap(b){
+    if (armed === b){ disarm(); return true; }
+    disarm(); armed = b; b.dataset.t = b.textContent; b.dataset.armed = '1'; b.textContent = 'Tap again';
+    armTimer = setTimeout(disarm, 3000); return false;
+  }
+  // Full screen, for the touch screen that runs this console.
+  const fullBtn = el('mgrFull');
+  if (document.documentElement.requestFullscreen){
+    fullBtn.hidden = false;
+    fullBtn.addEventListener('click', () => { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen().catch(() => {}); });
+    document.addEventListener('fullscreenchange', () => { fullBtn.textContent = document.fullscreenElement ? 'Exit full screen' : 'Full screen'; });
+  }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden){ repT0 = performance.now(); startReplay(); } });
 
   // ---------- commands ----------
   const msg = t => { say('mgrCmdMsg', t); say('mgrCmdMsg2', t); };
@@ -139,6 +273,9 @@ function runManager(){
   }
   root.addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
+    if (b.classList.contains('tc') && !confirmTap(b)) return;
+    if (b.dataset.spd){ repSpd = Number(b.dataset.spd); el('mgrRepSpd').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); repT0 = performance.now(); return; }
+    if (b.dataset.shot){ repSel = Number(b.dataset.shot); repAuto = repSel === shotList.length - 1; repT0 = performance.now(); renderDash(); return; }
     if (b.dataset.cmd) { let a; try { a = b.dataset.args ? JSON.parse(b.dataset.args) : undefined; } catch (err) {} send(b.dataset.cmd, a); }
     else if (b.classList.contains('mgr-tab')) showTab(b.dataset.tab);
     else if (b.dataset.nudge) nudge(b.dataset.nudge);
@@ -157,7 +294,7 @@ function runManager(){
     tab = name;
     root.querySelectorAll('.mgr-tab').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
     el('mgrTabRun').hidden = name !== 'run'; el('mgrTabSetup').hidden = name !== 'setup'; el('mgrTabDebug').hidden = name !== 'debug';
-    syncWants(); if (name !== 'run') render();
+    syncWants(); if (name !== 'run') render(); else startReplay();
   }
   // The Host only sends pictures and details while someone keeps saying they want them (every 4 s, and only while this page is visible).
   const wantsNow = () => ({pv: tab === 'setup' || (tab === 'debug' && el('mgrPvOn').checked), dbg: tab === 'debug'});

@@ -31,6 +31,7 @@ function decodeQr(png) {                       // reads a QR code from an image 
     return { ctx, page };
   }
   const txt = (p, sel) => p.locator(sel).first().innerText();
+  const tap2 = async loc => { const h = await loc.elementHandle(); await h.click(); await h.click(); };      // keys that change the game ask for a second tap
   const until = async (fn, ms = 8000, step = 100) => { const t0 = Date.now(); for (;;) { try { const v = await fn(); if (v) return v; } catch (e) {} if (Date.now() - t0 > ms) return false; await sleep(step); } };
 
   // ---- nothing leaves the page until a Host is paired ----
@@ -73,13 +74,13 @@ function decodeQr(png) {                       // reads a QR code from an image 
     check(await m1.page.locator('#mgrChips .chip').count() === 10, 'Manager lists all ten games');
 
     // ---- commands ----
-    await m1.page.locator('#mgrChips .chip', { hasText: 'Timeline' }).click();
+    await tap2(m1.page.locator('#mgrChips .chip', { hasText: 'Timeline' }));
     check(await until(async () => (await txt(host.page, '#gTitle')) === 'Timeline'), 'Choosing a game on the Manager changes the Host’s game');
     check(await until(async () => /Done/.test(await txt(m1.page, '#mgrCmdMsg'))), 'The Manager shows the Host’s acknowledgement');
     check(await until(async () => (await txt(m1.page, '#mgrGame')) === 'Timeline'), 'The new game appears on the Manager');
-    await m1.page.locator('[data-cmd="next"]').click();
+    await tap2(m1.page.locator('[data-cmd="next"]'));
     check(await until(async () => (await txt(host.page, '#gTitle')) === 'Periodic Table'), 'Next game');
-    await m1.page.locator('[data-cmd="prev"]').click();
+    await tap2(m1.page.locator('[data-cmd="prev"]'));
     check(await until(async () => (await txt(host.page, '#gTitle')) === 'Timeline'), 'Previous game');
     const room = rec.room;
     check(await until(() => !fake.get('rooms/' + room + '/cmd')), 'Handled commands are removed from the relay');
@@ -108,7 +109,7 @@ function decodeQr(png) {                       // reads a QR code from an image 
     check(!/manage=/.test(m2.page.url()), 'The code is removed from the address after joining');
     check(await until(async () => (await txt(m2.page, '#mgrGame')) === 'Timeline'), 'The second Manager sees the same game');
     check(await until(async () => /2 controllers are connected/.test(await txt(host.page, '#pairWho').catch(() => '')) || (await host.page.locator('#btnPair').innerText()).includes('(2)')), 'Host counts two controllers');
-    await m2.page.locator('[data-cmd="next"]').click();
+    await tap2(m2.page.locator('[data-cmd="next"]'));
     check(await until(async () => (await txt(host.page, '#gTitle')) === 'Periodic Table' && (await txt(m1.page, '#mgrGame')) === 'Periodic Table'), 'A command from the second Manager reaches the Host and shows on both');
 
     // ---- the network drops and comes back ----
@@ -116,7 +117,7 @@ function decodeQr(png) {                       // reads a QR code from an image 
     check(await until(async () => /offline/i.test(await txt(m1.page, '#mgrRelayTxt')), 8000), 'Manager shows the relay as offline when the network drops');
     fake.setOffline(false);
     check(await until(async () => /Relay connected/.test(await txt(m1.page, '#mgrRelayTxt')), 15000), 'Manager reconnects by itself');
-    await m1.page.locator('[data-cmd="restart"]').click();
+    await tap2(m1.page.locator('[data-cmd="restart"]'));
     check(await until(async () => /Done/.test(await txt(m1.page, '#mgrCmdMsg'))), 'Commands work again after reconnecting');
 
     // ---- the connection self-test ----

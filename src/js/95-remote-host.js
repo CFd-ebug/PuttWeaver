@@ -47,7 +47,8 @@ const REMOTE_CMDS = {
   },
   camset(a){ const k = a && a.k; if (!(k in CAM_CTL)) throw new Error('No such camera setting'); const rg = camCtlRange(k); if (!rg || !LIVE.track) throw new Error('This camera does not have that setting'); setCamCtl(k, clamp(Number(a.v), rg.min, rg.max)); },
   report(){ return {text: liveReport()}; },
-  ping(){}
+  ping(){},
+  resetstats(){ remoteStatsReset().catch(e => llog('Could not reset the stats: ' + (e && e.message || e))); }
 };
 function remoteOption(k, v){
   switch (k){
@@ -140,6 +141,7 @@ function remoteSnapshot(){
     hole: h ? {par: h.par, strokes: h.list.map(e => e.strokes == null ? null : e.strokes), final: !!h.final} : null,
     live: {src: LIVE.src || '', on: !!LIVE.on, state: LIVE.on ? LIVE.state : 'off', cal: !!LIVE.Hcs, fps: Math.round(LIVE.camFps || 0), ms: Math.round(LIVE.procMs || 0)},
     ball: remoteBall(),
+    sr: [SHOTS.rev, statsRev],                    // changes when new shots or totals are in the database (96-remote-shots.js)
     setup: remoteWants() ? remoteSetup() : undefined,
     debug: remoteWantsDebug() ? remoteDebug() : undefined
   };

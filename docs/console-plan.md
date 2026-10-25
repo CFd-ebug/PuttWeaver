@@ -70,6 +70,8 @@ rooms/<room>/hb/host           server timestamp, every few seconds
 rooms/<room>/hb/mgr/<id>       server timestamp per Manager
 rooms/<room>/want/preview      server timestamp, refreshed by a Manager while the Setup tab is open
 rooms/<room>/preview           latest camera still as a data URL, about 1 per second, only while wanted
+rooms/<room>/shots/<n>         Host -> Managers       the shots of the hole in play: result, ball path, target, small picture of the sheet
+rooms/<room>/stats             Host -> Managers       running totals of holes and places, written by the Host only (projector games only)
 ```
 
 - `state` is small JSON: game id and name, status line, hint, mode, hole scorecard and rankings summary, tracker state and frame rate, ball position in sheet feet, setup checklist, last result, and a revision counter.
@@ -106,6 +108,8 @@ Paste these in the Firebase console under Realtime Database, Rules. Treat as a s
         "hb": { "$who": {} },
         "want": { "$what": {} },
         "preview": { ".validate": "newData.isString() && newData.val().length < 120000" },
+        "shots": { "$n": { ".validate": "newData.hasChildren(['n', 'title'])", "img": { ".validate": "newData.isString() && newData.val().length < 60000" } } },
+        "stats": { ".validate": "newData.hasChildren()" },
         "$other": { ".validate": false }
       }
     }
@@ -205,3 +209,13 @@ Not covered by any automated test, because the sandbox cannot reach `firebaseio.
 - **Restart recovery (Host):** the Host already reconnected to its room on its own (`remoteStart` at boot). It now also remembers whether the phone camera and tracking were on (`putt-lab-resume`, written by `resumeSave` whenever they change) and `resumeAfterRestart` switches them on again 1.5 s after the page opens. It skips a blocked camera permission, never resumes the simulated camera, and does not resume tracking without a calibration made with the same camera. "Stop camera" from the Manager or the panel clears the memory. Still needed after a real reboot: the phone must have the page open (set it as the home page or open the saved link), and Chrome must keep the camera permission for the site.
 - **Room cleanup (Host):** `remoteTidy` at start and every five minutes deletes answers older than two minutes, controller heartbeats and wants older than ten minutes, and the camera picture when nobody wants it; a picture is also deleted as soon as the Manager stops asking. `remoteForgetCode` deletes a pairing code left over from a closed page. A Manager removes its own heartbeat when it unpairs. Nothing else needs cleaning: `state` is overwritten in place and commands are deleted when handled.
 - **Not covered by tests:** a real phone restart, real Chrome wake locks (the test uses a stand-in), and resuming tracking itself (the fake camera cannot be calibrated). Please confirm these on the rig.
+
+## Dashboard, shot replays and statistics (phase 5)
+
+The Manager's Run tab is a touch-screen dashboard designed for a 2560 x 1600 display (sizes are in `em`, so it scales with the width; below 1100 px it stacks). It shows the game and status, the hole score ladder with the distribution of everyone's holes, a card per shot with how all players did on that place, a looping replay of the latest shot, a world map of everyone's results and the ball on the sheet. Keys that change the game (previous, next, restart, skip, retake photo, choosing a game) ask for a second tap ("Touch Confirm"); a Full screen key sits in the status strip.
+
+- **Shots** (`rooms/<room>/shots/<n>`): written by the Host (`96-remote-shots.js`) when a shot has a result: `{n, game, title, detail, tone, path: [[x, y, ms]...], rest, sw, sd, tgt?, hit?, off?, km?, img?}`. Sheet feet. `img` is a 480-wide JPEG of the projected sheet taken in `drawProj` just after the game drew it (before the ball and any banner); without the projector view there is no picture. The node is deleted when a new hole starts. A game can describe its target by adding an optional `shotInfo()` (see `src/games/map.js`): `{key, name, x, y, r, hit, off, km}`.
+- **Stats** (`rooms/<room>/stats`): `{n, holes: {gameId: {strokes: count}}, places: {key: {name, x, y, n, close, ksum, nk}}}`. The Host is the only writer: it keeps the totals in memory and writes them whole, at most every 1.5 s. Only a paired **Host** counts, so holes played in the Evaluator never do. The `resetstats` command clears `stats` and `shots`.
+- **Replay:** the Manager loops the newest shot until the next one arrives; the 01..04 keys pick another shot. Firebase returns small whole-number keys as an array, so `onShots` accepts both.
+- **Fonts:** Inter (SIL OFL, Latin subset, four weights) is embedded for the dashboard.
+- Data use: a shot picture is about 20 kB and the totals a few kB per hole, so a three hour event stays far below the free plan's limits.
