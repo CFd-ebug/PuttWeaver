@@ -26,6 +26,7 @@
         <span class="dot" id="mgrDotHost"></span><span id="mgrHostTxt">Host: waiting</span>
         <span class="mono" id="mgrTrack"></span>
         <span class="mono" id="mgrVer"></span>
+        <button class="btn key small" id="mgrFull" type="button" hidden>Full screen</button>
       </div>
       <nav class="mgr-tabs" role="tablist" aria-label="Console sections">
         <button class="mgr-tab" role="tab" aria-selected="true" data-tab="run" type="button">Run</button>
@@ -112,32 +113,48 @@
           <textarea id="mgrReportText" rows="8" readonly hidden aria-label="Report text"></textarea>
         </div>
       </div>
-      <div class="mgr-grid" id="mgrTabRun">
-        <div class="card mgr-now">
-          <div class="eyebrow">Now playing</div>
-          <h2 id="mgrGame">—</h2>
-          <p id="mgrStatus" class="mgr-status"></p>
-          <p class="help" id="mgrHint"></p>
-          <div class="mgr-result" id="mgrResult" hidden><b id="mgrResTitle"></b><span id="mgrResDetail"></span></div>
-          <div class="mgr-hole" id="mgrHole"></div>
+      <div class="dash" id="mgrTabRun">
+        <div class="dash-main">
+          <section class="card d-now">
+            <div class="eyebrow">Now playing</div>
+            <h2 id="mgrGame">—</h2>
+            <p id="mgrStatus" class="mgr-status"></p>
+            <p class="d-hint" id="mgrHint"></p>
+            <div class="mgr-result" id="mgrResult" hidden><b id="mgrResTitle"></b><span id="mgrResDetail"></span></div>
+            <div class="mgr-hole" id="mgrHole"></div>
+          </section>
+          <section class="card d-ladder" id="mgrLadder" aria-label="Hole scores of everyone who played this game"></section>
+          <section class="card d-shots"><div class="eyebrow">This hole</div><div id="mgrShots" class="d-shots-list"><p class="d-empty">No shots yet.</p></div></section>
+          <section class="card mgr-ctl d-ctl">
+            <div class="mgr-btns">
+              <button class="btn key tc" data-cmd="prev" type="button">Previous game</button>
+              <button class="btn key tc" data-cmd="next" type="button">Next game</button>
+              <button class="btn key tc" data-cmd="restart" type="button">Restart game</button>
+              <button class="btn key tc" data-cmd="skip" type="button">Skip round</button>
+              <button class="btn key tc" data-cmd="rearm" type="button">Retake empty-sheet photo</button>
+              <button class="btn key" id="mgrTrackBtn" type="button" aria-pressed="false">Pause tracking</button>
+              <button class="btn key" id="mgrHoldBtn" type="button" aria-pressed="false">Hold screen</button>
+            </div>
+            <div class="mgr-chips" id="mgrChips" role="group" aria-label="Choose a game"></div>
+            <p class="help" id="mgrCmdMsg" role="status" aria-live="polite"></p>
+          </section>
         </div>
-        <div class="card mgr-ctl">
-          <div class="mgr-btns">
-            <button class="btn" data-cmd="prev" type="button">Previous game</button>
-            <button class="btn" data-cmd="next" type="button">Next game</button>
-            <button class="btn" data-cmd="restart" type="button">Restart game</button>
-            <button class="btn" data-cmd="skip" type="button">Skip round</button>
-            <button class="btn" data-cmd="rearm" type="button">Retake empty-sheet photo</button>
-            <button class="btn" id="mgrTrackBtn" type="button" aria-pressed="false">Pause tracking</button>
-            <button class="btn" id="mgrHoldBtn" type="button" aria-pressed="false">Hold screen</button>
-          </div>
-          <div class="mgr-chips" id="mgrChips" role="group" aria-label="Choose a game"></div>
-          <p class="help" id="mgrCmdMsg" role="status" aria-live="polite"></p>
-        </div>
-        <div class="card mgr-map">
-          <div class="eyebrow">Ball on the sheet</div>
-          <canvas id="mgrMap" width="480" height="270" aria-label="Where the camera sees the ball"></canvas>
-          <p class="help mono" id="mgrBall"></p>
+        <div class="dash-side">
+          <section class="card d-replay">
+            <div class="d-thd"><div class="eyebrow" id="mgrRepHead">Replay</div><div class="d-sw" id="mgrRepSw" role="group" aria-label="Choose a shot to replay"></div></div>
+            <canvas id="mgrReplay" width="640" height="360" aria-label="Replay of the last shot on the projected sheet"></canvas>
+            <div class="rep-ctl"><span class="d-spd" id="mgrRepSpd" role="group" aria-label="Replay speed"><button type="button" data-spd="0.5" aria-pressed="false">0.5×</button><button type="button" data-spd="1" aria-pressed="true">1×</button></span><span class="mono" id="mgrRepInfo"></span></div>
+          </section>
+          <section class="card d-world">
+            <div class="eyebrow">Everyone · close rate by place</div>
+            <canvas id="mgrWorld" width="960" height="540" aria-label="World map: each place is coloured by how often players get close"></canvas>
+            <p class="d-key"><span class="easy">■</span> easy <span class="mid">■</span> mid <span class="hard">■</span> hard · <span id="mgrWorldN"></span></p>
+          </section>
+          <section class="card mgr-map">
+            <div class="eyebrow">Ball on the sheet</div>
+            <canvas id="mgrMap" width="480" height="270" aria-label="Where the camera sees the ball"></canvas>
+            <p class="help mono" id="mgrBall"></p>
+          </section>
         </div>
       </div>
     </div>

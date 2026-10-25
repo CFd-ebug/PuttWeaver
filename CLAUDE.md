@@ -30,6 +30,7 @@ src/styles.css        all CSS
 src/body.html         all markup (toolbar, panels, dialogs)
 src/js/               engine code, concatenated in filename order into one script
   00-data.js            placeholders where the map and element data are injected
+  04-worldmap.js        draws the world map picture (shared by Map Quest and the Manager console)
   05-role.js            roles (Evaluator, Host, Manager): resolves ROLE from the address, role switch dialog
   06-qr.js              offline QR code generator for the pairing screen
   07-relay.js           the only network code: Firebase Realtime Database REST client, streaming, self-test
@@ -45,6 +46,7 @@ src/js/               engine code, concatenated in filename order into one scrip
   80-live-core.js       live camera tracking: detection, movement guard, shot state machine
   90-live-ui.js         calibration, color sampling, camera, FPS overlay, tracking panel, projector corner fit
   95-remote-host.js     the Host side of the console: pairing dialog, state publisher, command table
+  96-remote-shots.js    the Host records each shot (path, picture) and the play statistics for the console; Evaluators never count
   99-boot.js            start-up
 src/games/            one file per game, plus games.json (play order)
 src/data/             generated data: map.js (Natural Earth), elements.js (written by scripts/gen-elements.js)

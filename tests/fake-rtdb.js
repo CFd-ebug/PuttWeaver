@@ -5,7 +5,7 @@
 //   const fake = await startFake();   fake.url   fake.db   fake.requests   fake.kick()   fake.setOffline(true)   fake.skew = 5000
 const http = require('http');
 
-const ROOM_KEYS = new Set(['state', 'cmd', 'ack', 'hb', 'want', 'preview']);
+const ROOM_KEYS = new Set(['state', 'cmd', 'ack', 'hb', 'want', 'preview', 'shots', 'stats']);
 const isObj = v => v && typeof v === 'object' && !Array.isArray(v);
 const sv = (v, now) => {                          // replace server-value placeholders with the time
   if (isObj(v)) { if (v['.sv'] === 'timestamp') return now; const o = {}; for (const k in v) o[k] = sv(v[k], now); return o; }
@@ -41,6 +41,8 @@ function allowed(parts, write, value) {            // returns null if allowed, o
     if (parts[2] === 'preview' && value !== null && (typeof value !== 'string' || value.length >= 120000)) return 'preview must be a string under 120000 characters';
     if (parts[2] === 'cmd' && parts.length === 4 && value !== null && (!isObj(value) || value.type === undefined || value.ts === undefined)) return 'cmd needs type and ts';
     if (parts[2] === 'state' && parts.length === 3 && value !== null && !isObj(value)) return 'state needs children';
+    if (parts[2] === 'stats' && parts.length === 3 && value !== null && !isObj(value)) return 'stats needs children';
+    if (parts[2] === 'shots' && parts.length === 4 && value !== null && (!isObj(value) || value.n === undefined || value.title === undefined || (value.img !== undefined && (typeof value.img !== 'string' || value.img.length >= 60000)))) return 'a shot needs n and title, and a picture under 60000 characters';
     return null;
   }
   return 'no such top-level path';

@@ -67,12 +67,17 @@ const fontCss = `<style>
 /* Embedded fonts, all under the SIL Open Font License 1.1 (https://openfontlicense.org); license texts are in assets/fonts/.
    Bungee: Copyright 2023 The Bungee Project Authors (https://github.com/djrrb/Bungee). Latin subset.
    Atkinson Hyperlegible: Copyright 2020 Braille Institute of America, Inc. Latin subset.
-   IBM Plex Mono: Copyright 2017 IBM Corp. with Reserved Font Name "Plex". Embedded unmodified. */
+   IBM Plex Mono: Copyright 2017 IBM Corp. with Reserved Font Name "Plex". Embedded unmodified.
+   Inter: Copyright 2016 The Inter Project Authors (https://github.com/rsms/inter). Latin subset. */
 ${face('Bungee', 400, 'Bungee-Regular.woff')}
 ${face('Atkinson Hyperlegible', 400, 'AtkinsonHyperlegible-Regular.woff')}
 ${face('Atkinson Hyperlegible', 700, 'AtkinsonHyperlegible-Bold.woff')}
 ${face('IBM Plex Mono', 400, 'IBMPlexMono-Regular.ttf')}
 ${face('IBM Plex Mono', 500, 'IBMPlexMono-Medium.ttf')}
+${face('Inter', 400, 'Inter-Regular.woff')}
+${face('Inter', 600, 'Inter-SemiBold.woff')}
+${face('Inter', 700, 'Inter-Bold.woff')}
+${face('Inter', 800, 'Inter-ExtraBold.woff')}
 /* base reset */
 html{-webkit-text-size-adjust:100%}
 :root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}

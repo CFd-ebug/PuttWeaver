@@ -16,6 +16,7 @@ function showResult(r){
   const el=$('result'); el.hidden=false; el.dataset.tone=r.tone||'';
   $('rEyebrow').textContent='Last shot'; $('rTitle').textContent=r.title; $('rDetail').textContent=r.detail||''; $('btnNext').textContent='Continue';
   $('rRate').hidden = true;
+  remoteShotDone(r);
 }
 function showSummary(){
   const el=$('result'), h = game.hole ? game.hole() : null, sm = game.summary();

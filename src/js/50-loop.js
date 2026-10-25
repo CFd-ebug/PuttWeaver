@@ -116,6 +116,7 @@ function drawProj(){
   if (REMOTE.hold){ drawHold(); ctx.restore(); return; }       // the console is holding the screen (95-remote-host.js)
   ctx.fillStyle='#f8f8f5'; ctx.fillRect(0,0,W,D);
   ctx.save(); game.drawSheet(); ctx.restore(); setWorld();
+  if (SHOTS.snap) remoteSnapSheet();
   if (S.washed){ ctx.fillStyle='rgba(238,238,230,0.38)'; ctx.fillRect(0,0,W,D); }
   if (mode==='over' && overInfo){
     const bh=D*0.36; ctx.fillStyle='rgba(16,22,46,0.88)'; ctx.fillRect(0,D/2-bh/2,W,bh);
@@ -159,6 +160,7 @@ function draw(){
   ctx.save(); ctx.beginPath(); ctx.rect(0,0,W,D); ctx.clip();
   ctx.save(); game.drawSheet(); ctx.restore();
   setWorld();
+  if (SHOTS.snap) remoteSnapSheet();
   if (S.washed){ ctx.fillStyle='rgba(238,238,230,0.38)'; ctx.fillRect(0,0,W,D); }
   if (mode==='over' && overInfo){
     const bh=D*0.36; ctx.fillStyle='rgba(16,22,46,0.88)'; ctx.fillRect(0,D/2-bh/2,W,bh);

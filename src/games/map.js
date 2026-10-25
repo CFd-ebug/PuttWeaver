@@ -10,23 +10,13 @@ function makeMap(){
   const latY = lat => (YT-mercY(lat))/SPAN*D;
   const xLon = x => x/W*360-180;
   const yLat = y => (2*Math.atan(Math.exp(YT - y/D*SPAN)) - Math.PI/2)*180/Math.PI;
-  let land=null, borders=null, cache={key:'', c:null};
+  let cache={key:'', c:null};
   let picks, num, rows, last, hits;
   function mapImage(){
     const w=Math.max(1,Math.round(W*view.T)), h=Math.max(1,Math.round(D*view.T)), key=w+'x'+h;
     if (cache.key===key) return cache.c;
-    if (!land){ land=new Path2D(MAP_LAND); borders=new Path2D(MAP_BORDERS); }
     const c = cache.c || document.createElement('canvas'); c.width=w; c.height=h;
-    const g = c.getContext('2d'), u = w/W;
-    g.fillStyle='#c2d5ea'; g.fillRect(0,0,w,h);
-    g.strokeStyle='rgba(48,80,128,0.22)';
-    for (let lon=-150; lon<=150; lon+=30){ const x=lonX(lon)*u; g.lineWidth=Math.max(1,0.012*u); g.beginPath(); g.moveTo(x,0); g.lineTo(x,h); g.stroke(); }
-    for (const lat of [-30,0,30,60]){ const y=latY(lat)*u; g.lineWidth=Math.max(1,(lat===0?0.024:0.012)*u); g.beginPath(); g.moveTo(0,y); g.lineTo(w,y); g.stroke(); }
-    g.save(); const sx=w/3200; g.scale(sx, h/1800); g.lineJoin='round';
-    g.fillStyle='#f8f6f1'; g.fill(land,'evenodd');
-    g.strokeStyle='#a4afc0'; g.lineWidth=Math.max(0.6,0.008*u)/sx; g.stroke(borders);
-    g.strokeStyle='#5a6d8e'; g.lineWidth=Math.max(0.8,0.012*u)/sx; g.stroke(land);
-    g.restore();
+    worldMapDraw(c.getContext('2d'), w, h, w/W);
     cache={key,c}; return c;
   }
   const cur = () => picks[num-1];
@@ -69,6 +59,11 @@ function makeMap(){
       return hit
         ? {title:'Close: −1 stroke', detail:`${fmt(km)} km from ${c.name}, ${missIn.toFixed(1)} in from the spot. Score now ${score()}.`, tone:'good'}
         : {title:`${fmt(km)} km off`, detail:`${missIn.toFixed(1)} in from the spot; it needed to stop within ${zoneIn()} in. Score stays ${score()}.`, tone:'bad'};
+    },
+    shotInfo(){        // for the console: what the target was and how the last ball did (optional hook for any game)
+      if (!last) return null;
+      const c = cur(), x = lonX(c.lon), y = latY(c.lat);
+      return {key:c.name, name:c.name, x, y, r:zoneIn()/12, hit:!!last.hit, off:last.p ? Math.hypot(last.p.x-x, last.p.y-y)*12 : null, km:last.km == null ? null : last.km};
     },
     advance(){ if (rows.length>=N) return 'over'; num++; last=null; return 'next'; },
     summary(){
