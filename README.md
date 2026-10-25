@@ -32,9 +32,9 @@ npm run serve                       # http://localhost:8080
 
 Source lives in `src/`, one file per game in `src/games/`. See `CLAUDE.md` for the layout, how to add a game, and the rules that matter (no yellow or green anywhere the camera can see, the page stays offline, scoring convention).
 
-## Working on it with Claude
+## AI Usage Disclosure
 
-Each contributor uses their own Claude account. Work on a branch, open a pull request into `main`, and keep to one game or fix per branch. `CLAUDE.md` is what Claude reads first. A pull request's run uploads the built page as an artifact, so a change can be tried on a phone before merging. Merging to `main` publishes the site.
+This project was built entirely relying on Claude for implementation (Sonnet 5.5, High, in chat). The builders were responsible for designing the games and UI, testing the system, and maintaining the sync database.
 
 ## License
 
