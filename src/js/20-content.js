@@ -40,7 +40,8 @@ const PLACE_TIERS = [
   ]}
 ].map(t => ({label:t.label, color:t.color, list:t.list.map(([name,region,country,lat,lon]) => ({name, where: region ? region+', '+country : country, country, lat, lon}))}));
 
-// Map Quest result quips, shown as the result title. One is picked at random from the group that matches the miss distance.
+// Map Quest result quips, shown on the sheet and as the result title. One is picked at random from the group that matches how far
+// off the ball stopped, measured on the sheet like the scoring: within the close zone (hit), 1.5x, 2.5x, 4x the zone, or farther (world).
 // A few places have their own pair, which replaces the general line. Written for this project.
 const MAP_ASK = ['Was that a putting problem or a geography problem?', 'Blame the putter, or blame the atlas?',
   'Great aim at the wrong place, or bad aim at the right one?', 'Hard to say if that’s your stroke or your schoolwork.', 'We’ll say the green was crooked.'];
