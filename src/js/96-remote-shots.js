@@ -3,7 +3,8 @@
 //   rooms/<room>/shots/<n>   the shots of the hole being played: result, ball path, target, and a picture of the projected sheet
 //   rooms/<room>/stats       running totals shared by every hole played on this rig (see STATS below)
 // The Host is the only writer, so the totals are kept in memory here and written back whole; a console command resets them.
-const SHOTS = {n: 0, rec: null, snap: false, timer: 0, base: ''};
+const SHOTS = {n: 0, rec: null, snap: false, timer: 0, rev: 0};     // rev and statsRev go into the published state, so a Manager knows when to fetch
+let statsRev = 0;
 const STATS_EMPTY = () => ({n: 0, holes: {}, places: {}});
 // n: holes played; holes[gameId][strokes]: how many holes ended with that score; places[key]: {name, x, y, n, close, ksum, nk}
 // where x and y are fractions of the sheet, n tries, close how many were close, ksum/nk the km miss total and how many had a reading.
@@ -17,18 +18,18 @@ function statsLoad(){
 }
 function statsSave(){
   clearTimeout(statsTimer);
-  statsTimer = setTimeout(() => { if (remoteCounts()) relayPut(statsBase() + 'stats', STATS).catch(() => {}); }, 1500);
+  statsTimer = setTimeout(() => { if (remoteCounts()) relayPut(statsBase() + 'stats', STATS).then(() => { statsRev++; REMOTE.key = ''; }).catch(() => {}); }, 1500);
 }
 async function remoteStatsReset(){
   clearTimeout(statsTimer); STATS = STATS_EMPTY(); statsReady = Promise.resolve();
-  await relayDelete(statsBase() + 'stats'); await relayDelete(statsBase() + 'shots'); SHOTS.n = 0; SHOTS.rec = null;
+  await relayDelete(statsBase() + 'stats'); await relayDelete(statsBase() + 'shots'); SHOTS.n = 0; SHOTS.rec = null; SHOTS.rev++; statsRev++; REMOTE.key = '';
 }
 
 // ---------- a new hole starts: the replays of the last one are no longer wanted ----------
 function remoteHoleStart(){
   if (!remoteCounts()) return;
   clearTimeout(SHOTS.timer); SHOTS.n = 0; SHOTS.rec = null; SHOTS.snap = false;
-  relayDelete(statsBase() + 'shots').catch(() => {});
+  relayDelete(statsBase() + 'shots').then(() => { SHOTS.rev++; REMOTE.key = ''; }).catch(() => {});
 }
 
 // ---------- a shot has a result ----------
@@ -66,7 +67,7 @@ function remoteSnapSheet(){
 function remoteShotSend(img){
   const rec = SHOTS.rec; if (!rec || rec.sent) return; rec.sent = true; clearTimeout(SHOTS.timer); SHOTS.snap = false;
   const out = Object.assign({}, rec); delete out.sent; if (img && img.length < 60000) out.img = img;
-  relayPut(statsBase() + 'shots/' + rec.n, out).catch(() => {});
+  relayPut(statsBase() + 'shots/' + rec.n, out).then(() => { SHOTS.rev++; REMOTE.key = ''; }).catch(() => {});
 }
 
 // ---------- a hole is finished ----------

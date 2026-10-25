@@ -141,6 +141,7 @@ function remoteSnapshot(){
     hole: h ? {par: h.par, strokes: h.list.map(e => e.strokes == null ? null : e.strokes), final: !!h.final} : null,
     live: {src: LIVE.src || '', on: !!LIVE.on, state: LIVE.on ? LIVE.state : 'off', cal: !!LIVE.Hcs, fps: Math.round(LIVE.camFps || 0), ms: Math.round(LIVE.procMs || 0)},
     ball: remoteBall(),
+    sr: [SHOTS.rev, statsRev],                    // changes when new shots or totals are in the database (96-remote-shots.js)
     setup: remoteWants() ? remoteSetup() : undefined,
     debug: remoteWantsDebug() ? remoteDebug() : undefined
   };

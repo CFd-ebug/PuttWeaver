@@ -67,9 +67,8 @@ const until = async (fn, ms = 10000, step = 100) => { const t0 = Date.now(); for
   const f2 = await mgr.page.locator('#mgrReplay').evaluate(c => c.toDataURL());
   check(f1 !== f2, 'The replay moves');
   check(await canvasInk('#mgrWorld') > 50, 'The world map of everyone’s results is drawn');
-  await sleep(2500);
-  const f3 = await mgr.page.locator('#mgrReplay').evaluate(c => c.toDataURL());
-  check(f3 !== f1, 'The replay keeps looping');
+  const seen = new Set(); for (let i = 0; i < 14; i++) { seen.add(await mgr.page.locator('#mgrReplay').evaluate(c => c.toDataURL())); await sleep(300); }
+  check(seen.size >= 5, 'The replay keeps looping (' + seen.size + ' different frames in four seconds)');
   await mgr.page.screenshot({ path: out + '/dashboard.png' });
   await mgr.page.setViewportSize({ width: 420, height: 860 }); await sleep(300);
   check(await mgr.page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), 'The dashboard fits a phone without sideways scrolling');

@@ -62,19 +62,17 @@ function runManager(){
     room = v.room; myId = v.id || relayRandom(6);
     el('mgrJoin').hidden = true; el('mgrRun').hidden = false; el('mgrAdd').hidden = false; el('mgrUnpair').hidden = false;
     streams.push(relayStream('rooms/' + room + '/state', {
-      onData: c => { lastState = c; render(); },
+      onData: c => { lastState = c; render(); dashSync(c); },
       onStatus: s => { relayLive = s === 'live'; strip(); }
     }));
     streams.push(relayStream('rooms/' + room + '/hb', {onData: c => { hostBeat = c && typeof c.host === 'number' ? c.host : 0; strip(); }}));
     streams.push(relayStream('rooms/' + room + '/ack', {onData: onAcks}));
-    streams.push(relayStream('rooms/' + room + '/stats', {onData: c => { statsData = c || {}; renderDash(); }}));
-    streams.push(relayStream('rooms/' + room + '/shots', {onData: onShots}));
     const beat = () => relayPut('rooms/' + room + '/hb/mgr/' + myId, RELAY_TS).catch(() => {});
     relaySyncClock(room).catch(() => {}).then(beat);
     timers.push(setInterval(beat, 5000), setInterval(strip, 2000));
     strip(); render();
   }
-  function stop(){ stopPreview(); cancelAnimationFrame(repRaf); repRaf = 0; statsData = {}; shotList = []; repImgs.clear(); streams.forEach(s => s.close()); streams = []; timers.forEach(clearInterval); timers = []; pending.clear(); lastState = null; hostBeat = 0; relayLive = false; chipsKey = ''; }
+  function stop(){ srKey = ''; stopPreview(); cancelAnimationFrame(repRaf); repRaf = 0; statsData = {}; shotList = []; repImgs.clear(); streams.forEach(s => s.close()); streams = []; timers.forEach(clearInterval); timers = []; pending.clear(); lastState = null; hostBeat = 0; relayLive = false; chipsKey = ''; }
   function showJoin(){ stop(); room = ''; el('mgrJoin').hidden = false; el('mgrRun').hidden = true; el('mgrAdd').hidden = true; el('mgrUnpair').hidden = true; el('mgrCodeIn').focus(); }
 
   function setDot(id, s){ el(id).dataset.s = s; }
@@ -124,6 +122,18 @@ function runManager(){
   const fmtN = n => Math.round(n).toLocaleString('en-US');
   const rateOf = p => p && p.n ? p.close / p.n : 0;
   const rateClass = r => r >= 0.6 ? 'easy' : r < 0.35 ? 'hard' : 'mid';
+  // Shots and totals are fetched when the Host's state says they changed, which saves streams (a browser keeps only a few connections open).
+  let srKey = '', srBusy = false, srAgain = false;
+  async function dashSync(st){
+    const k = st && st.sr ? st.sr.join(',') : ''; if (!room || !k || k === srKey) return;
+    if (srBusy){ srAgain = true; return; }
+    srBusy = true; srKey = k;
+    try {
+      const [sh, sx] = await Promise.all([relayGet('rooms/' + room + '/shots'), relayGet('rooms/' + room + '/stats')]);
+      statsData = sx || {}; onShots(sh);
+    } catch (e) { srKey = ''; }
+    srBusy = false; if (srAgain){ srAgain = false; dashSync(lastState); }
+  }
   function onShots(c){                                              // Firebase may hand back an array when the keys are small whole numbers
     const list = (Array.isArray(c) ? c : c ? Object.values(c) : []).filter(x => x && typeof x === 'object' && x.n);
     list.sort((a, b) => a.n - b.n);

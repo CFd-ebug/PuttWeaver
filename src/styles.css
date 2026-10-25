@@ -341,7 +341,7 @@ body.role-manage{color-scheme:light;background:#fff;color:#0a0a0a;font-family:"I
 .role-manage .btn.key[aria-pressed="true"]{background:#0a0a0a;color:#fff}
 .role-manage .btn.key[data-armed]{background:#1a3cff;color:#fff;border-color:#1a3cff;box-shadow:0 .4em 0 #0a0a0a}
 .role-manage .btn.key:disabled{opacity:.4}
-.role-manage .mgr-strip{border:0;border-bottom:.1875em solid #0a0a0a;border-radius:0;background:#fff;font:500 1em/1.2 "IBM Plex Mono",monospace;text-transform:uppercase;letter-spacing:.06em;padding:.8em 0;margin-bottom:1em}
+.role-manage .mgr-strip{border:0;border-bottom:.1875em solid #0a0a0a;border-radius:0;background:#fff;font:500 1em/1.2 "IBM Plex Mono",monospace;letter-spacing:.04em;padding:.8em 0;margin-bottom:1em}
 .role-manage .mgr-tab{border-radius:0;font-weight:700;border:.1875em solid #0a0a0a;border-bottom:0}
 .role-manage .mgr-tab[aria-selected="true"]{background:#0a0a0a;color:#fff}
 .dash{display:grid;gap:1.25em;grid-template-columns:1fr}
