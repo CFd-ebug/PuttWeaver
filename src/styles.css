@@ -308,3 +308,15 @@ select{appearance:auto;font:400 14px/1.2 var(--body);color:var(--ink);background
 .mgr-nudge{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
 .mgr-nudge select{font:700 14px var(--body);padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
 .mgr-nudge .btn{min-width:42px}
+.mgr-kv{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;margin:6px 0 0;font-size:13.5px}
+.mgr-kv dt{color:var(--muted)}.mgr-kv dd{margin:0;font-family:var(--mono);font-weight:500;overflow-wrap:anywhere}
+.mgr-kv dd[data-s="bad"]{color:var(--flag)}.mgr-kv dd[data-s="warn"]{color:var(--star)}
+.mgr-opts{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;margin:8px 0}
+.mgr-sel{display:grid;gap:3px;font-size:12.5px;color:var(--muted);flex:1 1 150px}
+.mgr-sel select{font:700 14px var(--body);padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+.mgr-sliders{display:grid;gap:8px;margin:8px 0 14px}
+.mgr-sl{display:grid;grid-template-columns:minmax(90px,38%) 1fr auto;gap:8px;align-items:center;font-size:13.5px}
+.mgr-sl b{font:500 12.5px var(--mono);min-width:5.5ch;text-align:right}
+.mgr-sl input{width:100%;min-width:0}
+.mgr-logcard textarea{width:100%;margin-top:8px;font:400 11.5px/1.4 var(--mono);color:var(--ink);background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:8px}
+.mgr-logcard .mgr-log{max-height:260px;overflow:auto}

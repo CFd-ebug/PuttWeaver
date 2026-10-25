@@ -66,7 +66,7 @@ Everything is plain script concatenated into one scope, not ES modules. A top-le
 
 ## Roles
 
-The page has three roles, chosen by the address and remembered per device: **Evaluator** (`#play`, the default: try the games on any device with the simulated sheet), **Host** (`#host`: the camera phone with tracking and projection) and **Manager** (`#manage`: the remote console; the Run and Setup tabs work, Debug is planned, see `docs/console-plan.md`). A device that already has saved camera settings stays a Host.
+The page has three roles, chosen by the address and remembered per device: **Evaluator** (`#play`, the default: try the games on any device with the simulated sheet), **Host** (`#host`: the camera phone with tracking and projection) and **Manager** (`#manage`: the remote console; the Run, Setup and Debug tabs work, see `docs/console-plan.md`). A device that already has saved camera settings stays a Host.
 
 - `ROLE` is a global (`'play'`, `'host'` or `'manage'`) and `<body>` gets `role-play`, `role-host` or `role-manage`.
 - Mark anything only the Host needs (camera, projector, tracking, camera-simulation settings) with the class `host-only`; CSS hides it for the other roles. Do not rely on `ROLE` checks alone for markup.

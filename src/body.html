@@ -30,6 +30,7 @@
       <nav class="mgr-tabs" role="tablist" aria-label="Console sections">
         <button class="mgr-tab" role="tab" aria-selected="true" data-tab="run" type="button">Run</button>
         <button class="mgr-tab" role="tab" aria-selected="false" data-tab="setup" type="button">Setup</button>
+        <button class="mgr-tab" role="tab" aria-selected="false" data-tab="debug" type="button">Debug</button>
       </nav>
       <div class="mgr-grid" id="mgrTabSetup" hidden>
         <div class="card mgr-check">
@@ -67,6 +68,47 @@
             <button class="btn small" data-nudge="-1,0" type="button" aria-label="Left">←</button><button class="btn small" data-nudge="0,-1" type="button" aria-label="Up">↑</button><button class="btn small" data-nudge="0,1" type="button" aria-label="Down">↓</button><button class="btn small" data-nudge="1,0" type="button" aria-label="Right">→</button>
             <label class="check"><input type="checkbox" id="mgrFitCoarse"> Big steps</label>
           </div>
+        </div>
+      </div>
+      <div class="mgr-grid" id="mgrTabDebug" hidden>
+        <div class="card mgr-stats">
+          <div class="eyebrow">Tracking right now</div>
+          <dl class="mgr-kv" id="mgrKv"></dl>
+        </div>
+        <div class="card">
+          <div class="eyebrow">Show on the sheet</div>
+          <div class="mgr-opts">
+            <label class="check"><input type="checkbox" data-opt="dbg"> Match overlay</label>
+            <label class="check"><input type="checkbox" data-opt="fps"> Frame rate</label>
+            <label class="check"><input type="checkbox" data-opt="mark"> Tracking marker</label>
+            <button class="btn small" data-opt="dbgmove" type="button">Move overlay</button>
+          </div>
+          <div class="mgr-opts">
+            <label class="mgr-sel">Detection <select data-opt="method"><option value="ref">Compare to empty sheet</option><option value="hue">Color only</option></select></label>
+            <label class="mgr-sel">Shot starts <select data-opt="zone"><option value="tee">Rolling in from the tee edge</option><option value="anywhere">Anywhere it moves</option></select></label>
+            <label class="mgr-sel">Detail <select data-opt="proc"><option value="320">Fast (320)</option><option value="480">Balanced (480)</option><option value="640">Fine (640)</option></select></label>
+            <label class="mgr-sel">Camera resolution <select data-opt="res"><option value="640">640 × 480</option><option value="1280">1280 × 720</option><option value="1920">1920 × 1080</option></select></label>
+          </div>
+        </div>
+        <div class="card">
+          <div class="eyebrow">Tuning</div>
+          <div class="mgr-sliders" id="mgrSliders"></div>
+          <div class="eyebrow" id="mgrCamHead">Camera controls</div>
+          <div class="mgr-sliders" id="mgrCamSliders"></div>
+          <p class="help" id="mgrCamNote"></p>
+        </div>
+        <div class="card mgr-prev">
+          <div class="eyebrow">What the camera sees</div>
+          <label class="check"><input type="checkbox" id="mgrPvOn" checked> Send the picture (uses data)</label>
+          <canvas id="mgrPv2" width="480" height="270" aria-label="Camera picture with detections outlined"></canvas>
+          <p class="help">Blue outline: the sheet. Pink ring: the ball the tracker chose. White squares: other candidate blobs.</p>
+        </div>
+        <div class="card mgr-logcard">
+          <div class="eyebrow">Log and report</div>
+          <ul class="mgr-log mono" id="mgrDbgLog"></ul>
+          <div class="mgr-btns"><button class="btn small" id="mgrReportBtn" type="button">Copy report</button></div>
+          <p class="help" id="mgrReportMsg" role="status" aria-live="polite"></p>
+          <textarea id="mgrReportText" rows="8" readonly hidden aria-label="Report text"></textarea>
         </div>
       </div>
       <div class="mgr-grid" id="mgrTabRun">

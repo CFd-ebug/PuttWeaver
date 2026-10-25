@@ -104,7 +104,7 @@ function runManager(){
     tb.textContent = l.on ? 'Pause tracking' : 'Start tracking'; tb.setAttribute('aria-pressed', String(!!l.on)); tb.disabled = !l.src || !l.cal;
     el('mgrHoldBtn').setAttribute('aria-pressed', String(!!st.hold)); el('mgrHoldBtn').textContent = st.hold ? 'Resume game' : 'Hold screen';
     el('mgrBall').textContent = st.ball ? 'x ' + st.ball.x.toFixed(2) + ' ft · y ' + st.ball.y.toFixed(2) + ' ft' : 'No ball in view';
-    drawMap(st); strip(); renderSetup(st);
+    drawMap(st); strip(); renderSetup(st); renderDebug(st);
   }
   function drawMap(st){
     const c = el('mgrMap'), g = c.getContext('2d'), w = c.width, h = c.height;
@@ -126,6 +126,7 @@ function runManager(){
       onAcks(acks);                       // the answer may already have arrived while this request was still finishing
       const ack = await done;
       if (!quiet || !ack.ok) msg(ack.ok ? 'Done.' : 'The Host said: ' + ack.error);
+      return ack;
     } catch (e) { msg('Could not send: ' + e.message); }
   }
   function onAcks(c){
@@ -141,6 +142,7 @@ function runManager(){
     if (b.dataset.cmd) { let a; try { a = b.dataset.args ? JSON.parse(b.dataset.args) : undefined; } catch (err) {} send(b.dataset.cmd, a); }
     else if (b.classList.contains('mgr-tab')) showTab(b.dataset.tab);
     else if (b.dataset.nudge) nudge(b.dataset.nudge);
+    else if (b.dataset.opt) send('opt', {k: b.dataset.opt});
     else if (b.classList.contains('chip') && b.dataset.idx !== undefined) send('game', {idx: Number(b.dataset.idx)});
   });
   el('mgrTrackBtn').addEventListener('click', () => send('track', {on: !(lastState && lastState.live && lastState.live.on)}));
@@ -153,25 +155,35 @@ function runManager(){
   function showTab(name){
     tab = name;
     root.querySelectorAll('.mgr-tab').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
-    el('mgrTabRun').hidden = name !== 'run'; el('mgrTabSetup').hidden = name !== 'setup';
-    if (name === 'setup'){ startPreview(); render(); } else stopPreview();
+    el('mgrTabRun').hidden = name !== 'run'; el('mgrTabSetup').hidden = name !== 'setup'; el('mgrTabDebug').hidden = name !== 'debug';
+    syncWants(); if (name !== 'run') render();
   }
-  function startPreview(){                // the Host only sends pictures while someone keeps saying they want them
-    if (pvStream || !room) return;
-    const want = () => { if (!document.hidden) relayPut('rooms/' + room + '/want/preview', RELAY_TS).catch(() => {}); };
-    want(); wantTimer = setInterval(want, 4000);
-    pvStream = relayStream('rooms/' + room + '/preview', {onData: c => { if (typeof c === 'string' && c.startsWith('data:image/')) paintPreview(c); }});
+  // The Host only sends pictures and details while someone keeps saying they want them (every 4 s, and only while this page is visible).
+  const wantsNow = () => ({pv: tab === 'setup' || (tab === 'debug' && el('mgrPvOn').checked), dbg: tab === 'debug'});
+  function beatWants(){ if (document.hidden || !room) return; const w = wantsNow(); if (w.pv) relayPut('rooms/' + room + '/want/preview', RELAY_TS).catch(() => {}); if (w.dbg) relayPut('rooms/' + room + '/want/debug', RELAY_TS).catch(() => {}); }
+  function syncWants(){
+    if (!room){ stopPreview(); return; }
+    const w = wantsNow();
+    if (w.pv && !pvStream) pvStream = relayStream('rooms/' + room + '/preview', {onData: c => { if (typeof c === 'string' && c.startsWith('data:image/')) paintPreview(c); }});
+    if (!w.pv && pvStream){ pvStream.close(); pvStream = null; }
+    if ((w.pv || w.dbg) && !wantTimer){ beatWants(); wantTimer = setInterval(beatWants, 4000); }
+    else if (!w.pv && !w.dbg){ clearInterval(wantTimer); wantTimer = 0; }
+    else beatWants();
   }
   function stopPreview(){ if (pvStream){ pvStream.close(); pvStream = null; } clearInterval(wantTimer); wantTimer = 0; }
   function paintPreview(url){ const img = new Image(); img.onload = () => { pvImg = img; pvSeq++; drawPv(); }; img.src = url; }
   function drawPv(){
-    const c = el('mgrPv'); if (!pvImg) return;
-    if (c.width !== pvImg.naturalWidth || c.height !== pvImg.naturalHeight){ c.width = pvImg.naturalWidth; c.height = pvImg.naturalHeight; }
-    const g = c.getContext('2d'); g.drawImage(pvImg, 0, 0);
-    const su = lastState && lastState.setup;
-    if (su && su.quad){ g.strokeStyle = '#6f9bff'; g.lineWidth = 2; g.beginPath(); su.quad.forEach(([u, v], k) => k ? g.lineTo(u * c.width, v * c.height) : g.moveTo(u * c.width, v * c.height)); g.closePath(); g.stroke(); }
-    if (su && su.det){ g.strokeStyle = '#ff3b8d'; g.lineWidth = 2; g.beginPath(); g.arc(su.det[0] * c.width, su.det[1] * c.height, 9, 0, 7); g.stroke(); }
-    c.dataset.seq = String(pvSeq);
+    if (!pvImg) return;
+    const su = lastState && lastState.setup, dbg = lastState && lastState.debug;
+    for (const id of ['mgrPv', 'mgrPv2']){
+      const c = el(id); if (c.offsetParent === null) continue;          // only the visible one
+      if (c.width !== pvImg.naturalWidth || c.height !== pvImg.naturalHeight){ c.width = pvImg.naturalWidth; c.height = pvImg.naturalHeight; }
+      const g = c.getContext('2d'); g.drawImage(pvImg, 0, 0);
+      if (su && su.quad){ g.strokeStyle = '#6f9bff'; g.lineWidth = 2; g.beginPath(); su.quad.forEach(([u, v], k) => k ? g.lineTo(u * c.width, v * c.height) : g.moveTo(u * c.width, v * c.height)); g.closePath(); g.stroke(); }
+      if (id === 'mgrPv2' && dbg){ g.strokeStyle = '#ffffff'; g.lineWidth = 1.5; for (const [u, v] of dbg.blobs || []) g.strokeRect(u * c.width - 5, v * c.height - 5, 10, 10); }
+      if (su && su.det){ g.strokeStyle = '#ff3b8d'; g.lineWidth = 2; g.beginPath(); g.arc(su.det[0] * c.width, su.det[1] * c.height, 9, 0, 7); g.stroke(); }
+      c.dataset.seq = String(pvSeq);
+    }
     say('mgrPvNote', 'Updated ' + new Date().toLocaleTimeString() + '. Tap the ball to sample its color. The blue outline is the sheet as the calibration sees it.');
   }
   el('mgrPv').addEventListener('click', e => {
@@ -230,6 +242,72 @@ function runManager(){
   const fitEnd = () => { fitDrag = -1; };
   fitCv.addEventListener('pointerup', fitEnd); fitCv.addEventListener('pointercancel', fitEnd);
   el('mgrFitSel').addEventListener('change', drawFit);
+
+
+  // ---------- Debug tab ----------
+  const lastEdit = {};          // slider id -> time of the last local change, so a refresh does not snap it back mid-drag
+  const sendSoon = (() => { const t = {}; return (key, fn) => { clearTimeout(t[key]); t[key] = setTimeout(fn, 200); }; })();
+  function buildSliders(box, items, cmd, idKey){
+    const key = items.map(x => x.id || x.k).join('|');
+    if (box.dataset.key !== key){
+      box.dataset.key = key; box.textContent = '';
+      for (const it of items){
+        const id = it.id || it.k, lab = document.createElement('label'), name = document.createElement('span'), inp = document.createElement('input'), val = document.createElement('b');
+        lab.className = 'mgr-sl'; name.textContent = it.label; inp.type = 'range'; inp.dataset.id = id; val.dataset.val = id;
+        inp.min = it.min; inp.max = it.max; inp.step = it.step; lab.append(name, inp, val); box.append(lab);
+        inp.addEventListener('input', () => { lastEdit[id] = Date.now(); val.textContent = inp.value; sendSoon(id, () => send(cmd, {[idKey]: id, v: Number(inp.value)}, true)); });
+      }
+    }
+    for (const it of items){
+      const id = it.id || it.k, inp = box.querySelector('input[data-id="' + id + '"]'), val = box.querySelector('b[data-val="' + id + '"]');
+      if (Date.now() - (lastEdit[id] || 0) > 1500){ inp.value = it.v; val.textContent = it.t; }
+    }
+  }
+  function kv(rows){
+    const dl = el('mgrKv'); dl.textContent = '';
+    for (const [k, v, s] of rows){ const dt = document.createElement('dt'), dd = document.createElement('dd'); dt.textContent = k; dd.textContent = v; if (s) dd.dataset.s = s; dl.append(dt, dd); }
+  }
+  function renderDebug(st){
+    const d = st.debug; if (!d || tab !== 'debug') return;
+    const rt = d.rates || {}, l = st.live || {}, f = n => n >= 1 ? n.toFixed(0) : '–', m = d.motion || {}, b = d.det && d.det.best;
+    kv([
+      ['Tracking', l.on ? 'on · ' + l.state : 'off'],
+      ['Frame rate', f(rt.disp) + ' display · ' + f(rt.cam) + ' camera · ' + f(rt.ana) + ' analyzed' + (l.src ? ' · ' + (rt.ms || 0).toFixed(0) + ' ms' : ''), l.src && rt.ana < 10 ? 'warn' : ''],
+      ['Ball seen', l.src ? d.seen + '% of recent frames' + (d.weak ? ' · ' + d.weak + ' by the loose match' : '') : '–'],
+      ['Match', d.det ? d.det.count + ' px · ' + d.det.blobs + ' blobs' + (d.det.note ? ' · ' + d.det.note : '') : '–'],
+      ['Last ball', b ? b.x.toFixed(2) + ', ' + b.y.toFixed(2) + ' ft · area ' + b.area + ' px (expected ' + b.exp + ') · fill ' + b.fill + ' · aspect ' + b.aspect + (d.det.weak ? ' · loose match' : '') : 'none'],
+      ['Movement guard', m.busy ? 'MOVING' : 'still', m.busy ? 'warn' : ''],
+      ['Guard numbers', m.now + '% changing · usual ' + m.floor + '% · limit ' + m.thr + '%'],
+      ['Empty-sheet photo', d.refAge != null ? d.refAge + ' s old' : 'none'],
+      ['Shots started', (d.starts || [0, 0])[0] + ' rolling in · ' + (d.starts || [0, 0])[1] + ' at rest'],
+      ['Analysis size', d.pw ? d.pw + '×' + d.ph : '–']
+    ]);
+    const o = d.opts || {};
+    root.querySelectorAll('#mgrTabDebug [data-opt]').forEach(x => {
+      if (x.tagName === 'BUTTON' || document.activeElement === x) return;
+      if (x.type === 'checkbox') x.checked = !!o[x.dataset.opt]; else x.value = String(o[x.dataset.opt]);
+    });
+    buildSliders(el('mgrSliders'), d.sliders || [], 'tune', 'id');
+    const cams = Object.keys(d.cam || {}).map(k => Object.assign({k}, d.cam[k]));
+    el('mgrCamHead').hidden = el('mgrCamSliders').hidden = !cams.length;
+    buildSliders(el('mgrCamSliders'), cams, 'camset', 'k');
+    say('mgrCamNote', d.canCam ? (cams.length ? 'If a rolling ball is not seen, shorten the exposure time until the ball is crisp mid-roll. ' : 'This camera has no adjustable exposure, zoom or brightness. ') + (d.lock || '') : 'Camera settings need the phone camera on the Host.');
+    const lg = el('mgrDbgLog'); lg.textContent = ''; (d.log || []).slice().reverse().forEach(t => { const li = document.createElement('li'); li.textContent = t; lg.append(li); });
+    drawPv();
+  }
+  root.addEventListener('change', e => {
+    const x = e.target; if (x.id === 'mgrPvOn'){ syncWants(); return; }
+    if (!x.dataset || !x.dataset.opt || x.tagName === 'BUTTON') return;
+    send('opt', {k: x.dataset.opt, v: x.type === 'checkbox' ? x.checked : x.value});
+  });
+  el('mgrReportBtn').addEventListener('click', async () => {
+    const box = el('mgrReportText'); say('mgrReportMsg', 'Asking the Host…');
+    const ack = await send('report', undefined, true);
+    if (!ack || !ack.ok || !ack.text){ say('mgrReportMsg', ack && ack.error ? 'The Host said: ' + ack.error : 'No report came back. Is the Host online?'); return; }
+    box.value = ack.text; box.hidden = false; box.focus(); box.select();
+    let ok = false; try { await navigator.clipboard.writeText(ack.text); ok = true; } catch (err) { try { ok = document.execCommand('copy'); } catch (e2) {} }
+    say('mgrReportMsg', ok ? 'Report copied (' + Math.round(ack.text.length / 100) / 10 + ' kB). Paste it into an issue or a message.' : 'Copying was blocked, so the report is selected below: press Copy on your keyboard, or touch and hold it.');
+  });
 
   // ---------- footer: add a controller, test, unpair ----------
   el('mgrAdd').addEventListener('click', async () => {

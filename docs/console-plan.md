@@ -1,6 +1,6 @@
 # Management console and roles: plan
 
-Status: agreed design. Phases 0 (roles and landing), 1 (relay, pairing, Run tab) and 2 (Setup tab) are built; the Debug tab and the hardening are not. Written so that any contributor's Claude can build a piece of it without re-deriving the decisions. Update this file when a decision changes.
+Status: agreed design. Phases 0 (roles and landing), 1 (relay, pairing, Run tab) 2 (Setup tab) and 3 (Debug tab) are built; the hardening is not. Written so that any contributor's Claude can build a piece of it without re-deriving the decisions. Update this file when a decision changes.
 
 ## Why
 
@@ -154,7 +154,7 @@ Claude Code cloud sessions cannot reach `firebaseio.com` (the network allowlist 
 0. **Roles and landing (built).** Role resolution, Evaluator view with Host controls hidden, role links, role switch. No network. Acceptance: opening the plain address shows the Evaluator view; every game plays; no camera or projector controls are visible; the existing tests still pass.
 1. **Relay, pairing and Run tab (built).** `06-qr.js`, `07-relay.js`, `08-manager.js`, `95-remote-host.js`, the Manager shell and Run tab, pairing window with QR and typed code, status strip, command expiry and acknowledgement, Host offline banner. Acceptance: pair two pages, change game, restart and skip from the Manager, watch the ball position on the mini-map, kill the Host and see the offline banner, and confirm an expired command is ignored.
 2. **Setup tab (built).** Checklist (camera, corners, calibration, ball color, delay, tracking), camera still with tap-to-sample, corner handles that can be dragged or nudged.
-3. **Debug tab.** Overlays, tuning, log, report copy.
+3. **Debug tab (built).** Overlays, tuning, camera sliders, log, report copy, picture switch.
 4. **Hardening.** Event lock, wake lock, reconnect after reboot, per-room cleanup, docs.
 
 ## Testing
@@ -187,3 +187,13 @@ Not covered by any automated test, because the sandbox cannot reach `firebaseio.
 - **Pictures:** the Manager writes `want/preview` every 4 s while the Setup tab is visible. The Host sends `rooms/<room>/preview` (a JPEG data URL from the camera processing canvas, about 17 kB) once a second while that timestamp is under 12 s old. Leaving the tab, or locking the phone, stops it within about 12 s.
 - **Corners:** the plan said "drag corners on the still". The still cannot be used directly, because the corner handles are positions on the projector screen and the camera-to-screen mapping is unknown until after calibration. So the Manager shows a small picture of the projector screen with four handles (drag, or pick one and nudge) next to the live still, and you watch the still to see the effect. The Host's own on-screen handles still work.
 - Not in the Setup tab yet: camera device and resolution pickers, exposure time and zoom sliders (they are on the Host's live panel). They fit naturally in the Debug tab or a later Setup addition.
+
+## What phase 3 built
+
+- **Wants:** the Manager writes `want/debug` every 4 s while the Debug tab is visible, and `want/preview` there too when the picture switch is on (and on the Setup tab as before). The Host adds `debug` to its state only while `want/debug` is fresh, so it costs nothing when the tab is closed. About 2 to 5 kB at the state rate.
+- **State:** `debug` (frame rates, how often the ball is seen, what the detector found and why not, movement-guard numbers, empty-sheet photo age, shots started, analysis size, the tuning sliders with their current values and ranges, option values, camera control ranges, and the last 40 log lines with their age in seconds). It comes from `remoteDebug()` in `95-remote-host.js`. **Firebase drops empty objects and arrays**, so the Manager must treat every field of `debug` (and `setup`) as possibly missing; `renderDebug` does.
+- **Commands:** `opt` (`dbg`, `fps`, `mark`, `dbgmove`, `method`, `zone`, `proc`, `res`; changing `res` restarts the camera through `remoteTask`), `tune` (a `LIVE_SLIDERS` id and value), `camset` (exposure time, zoom, brightness and so on, from `CAM_CTL` in `90-live-ui.js`) and `report`. The Host's own buttons and the Manager use the same setters, so nothing is duplicated.
+- **Report:** `report` puts the Host's full tracking report in the acknowledgement as `text`, not in a new database path, so the rules did not change. The Manager copies it to its clipboard and, if the browser refuses, selects it in a text box.
+- **Sliders** are built on the Manager from what the Host sends, so a new `LIVE_SLIDERS` entry shows up on its own. A control the Manager just touched ignores incoming values for 1.5 s so it does not jump.
+- **Picture:** the same preview stream as Setup, with the blobs the detector found drawn as white squares.
+- Not done: camera device picker. Event lock is phase 4.

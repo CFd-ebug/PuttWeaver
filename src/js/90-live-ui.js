@@ -261,14 +261,25 @@ async function loadClip(file){
   LIVE.src = 'file'; LIVE.label = file.name; watchVideoFrames();
   llog(`Playing clip ${file.name} as the camera`); renderLiveStatus();
 }
+// the camera settings that can be changed live: label and how the value reads
+const CAM_CTL = {zoom:['Zoom', v => `${(+v).toFixed(1)}×`], exposureTime:['Exposure time', v => `${(v/10).toFixed(1)} ms`], exposureCompensation:['Brightness', v => (+v).toFixed(1)]};
+function camCtlRange(k){        // {min, max, step, v} for a control this camera has, otherwise null
+  const c = (LIVE.caps || {})[k]; if (!c || !(c.max > c.min)) return null;
+  let mx = c.max; if (k === 'exposureTime') mx = Math.min(mx, 500);   // over 50 ms only adds blur
+  return {min:c.min, max:mx, step:c.step || 0.1, v:clamp((LIVE.settings || {})[k] ?? c.min, c.min, mx)};
+}
+async function setCamCtl(k, v){
+  const adv = k === 'exposureTime' ? {exposureMode:'manual', exposureTime:+v} : {[k]: +v};
+  try { await LIVE.track.applyConstraints({advanced:[adv]}); LIVE.settings = LIVE.track.getSettings(); } catch (e) { llog(`${k} change refused: ${e.name}`); }
+}
 function buildCamControls(){
   const c = LIVE.caps || {}, box = $('lpCamCtl'), rows = [];
   const can = k => Array.isArray(c[k]) && c[k].includes('manual');
-  const CTL = {zoom:['Zoom', v => `${(+v).toFixed(1)}×`], exposureTime:['Exposure time', v => `${(v/10).toFixed(1)} ms`], exposureCompensation:['Brightness', v => (+v).toFixed(1)]};
+  const CTL = CAM_CTL;
   for (const [k, [label, f]] of Object.entries(CTL)){
-    if (c[k] && c[k].max > c[k].min){
-      let mx = c[k].max; if (k === 'exposureTime') mx = Math.min(mx, 500);   // over 50 ms only adds blur
-      const v = clamp(LIVE.settings[k] ?? c[k].min, c[k].min, mx);
+    const rg = camCtlRange(k);
+    if (rg){
+      const mx = rg.max, v = rg.v;
       rows.push(`<label class="lp-sl"><span>${label}</span><input type="range" id="lpCam-${k}" min="${c[k].min}" max="${mx}" step="${c[k].step || 0.1}" value="${v}"><b id="lpCam-${k}-v">${f(v)}</b></label>`);
     }
   }
@@ -277,11 +288,7 @@ function buildCamControls(){
   box.innerHTML = rows.join('');
   for (const [k, [, f]] of Object.entries(CTL)){
     const el = $(`lpCam-${k}`); if (!el) continue;
-    el.addEventListener('input', async () => {
-      $(`lpCam-${k}-v`).textContent = f(+el.value);
-      const adv = k === 'exposureTime' ? {exposureMode:'manual', exposureTime:+el.value} : {[k]: +el.value};
-      try { await LIVE.track.applyConstraints({advanced:[adv]}); } catch (e) { llog(`${k} change refused: ${e.name}`); }
-    });
+    el.addEventListener('input', () => { $(`lpCam-${k}-v`).textContent = f(+el.value); setCamCtl(k, el.value); });
   }
 }
 async function lockCamera(){
