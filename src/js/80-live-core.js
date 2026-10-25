@@ -586,9 +586,9 @@ function startLivePlay(){
   if (!proj) enterProj();
   LIVE.on = true; LIVE.resultAt = state.clock; if (mode === 'aim') armReady(); else LIVE.state = 'collect';
   S.input = 'putt'; refreshProjBar();
-  llog('Tracking on'); return true;
+  llog('Tracking on'); resumeSave(); return true;
 }
-function stopLivePlay(why){ if (!LIVE.on) return; LIVE.on = false; LIVE.state = 'off'; if (mode === 'roll' || mode === 'read'){ mode = 'aim'; shot = null; } llog(why || 'Tracking paused'); setHint(); }
+function stopLivePlay(why){ if (!LIVE.on) return; LIVE.on = false; LIVE.state = 'off'; resumeSave(); if (mode === 'roll' || mode === 'read'){ mode = 'aim'; shot = null; } llog(why || 'Tracking paused'); setHint(); }
 
 // ---- virtual ball for the simulated camera (the real ball replaces it on the rig) ----
 function launchVirtual(angle, frac){

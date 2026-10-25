@@ -15,6 +15,7 @@ const suite = [
   { name: 'console: pairing, status, commands, reconnect', file: 'console-check.js', timeout: 240, ok: [NO_ERRORS] },
   { name: 'console: Setup tab with the simulated camera', file: 'console-setup-check.js', timeout: 400, ok: [NO_ERRORS] },
   { name: 'console: Debug tab with the simulated camera', file: 'console-debug-check.js', timeout: 400, ok: [NO_ERRORS] },
+  { name: 'console: event lock, wake lock, restart, cleanup', file: 'console-hardening-check.js', timeout: 400, ok: [NO_ERRORS] },
   { name: 'ui: every game plays to a score', file: 'ui-check.js', timeout: 420, ok: [NO_ERRORS] },
   { name: 'offline: no network requests', file: 'offline-check.js', timeout: 120, ok: [/"requests": \[\]/, /"errors": \[\]/] },
   { name: 'ranking and export panel', file: 'rank-check.js', timeout: 120, ok: [NO_ERRORS] },

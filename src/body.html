@@ -29,8 +29,9 @@
       </div>
       <nav class="mgr-tabs" role="tablist" aria-label="Console sections">
         <button class="mgr-tab" role="tab" aria-selected="true" data-tab="run" type="button">Run</button>
-        <button class="mgr-tab" role="tab" aria-selected="false" data-tab="setup" type="button">Setup</button>
-        <button class="mgr-tab" role="tab" aria-selected="false" data-tab="debug" type="button">Debug</button>
+        <button class="mgr-tab" role="tab" aria-selected="false" data-tab="setup" type="button" hidden>Setup</button>
+        <button class="mgr-tab" role="tab" aria-selected="false" data-tab="debug" type="button" hidden>Debug</button>
+        <button class="mgr-lock" id="mgrLock" type="button" data-s="locked"><span class="mgr-lockfill" aria-hidden="true"></span><span id="mgrLockTxt">Hold to unlock Setup and Debug</span></button>
       </nav>
       <div class="mgr-grid" id="mgrTabSetup" hidden>
         <div class="card mgr-check">

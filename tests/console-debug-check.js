@@ -1,7 +1,7 @@
 // The Manager's Debug tab against a Host with the simulated camera (needs dist/test.html and WebGL): live numbers, overlay and
 // detection switches, tuning sliders, the log, the report, the picture switch, and that details stop when the tab is left.
 const { chromium } = require('playwright');
-const { dist } = require('./lib');
+const { dist, unlockManager } = require('./lib');
 const { startFake } = require('./fake-rtdb');
 const fails = [], notes = [];
 const check = (ok, what) => { (ok ? notes : fails).push((ok ? 'ok   ' : 'FAIL ') + what); };
@@ -34,6 +34,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   const H = () => host.page.evaluate(() => { const L = window.__lab.LIVE; return { src: L.src, dbg: L.dbg, fps: L.fpsHud, mark: L.mark, method: L.method, zone: L.startZone, proc: L.pwTarget, res: L.res, corner: L.dbgCorner, hue: L.color.dh, still: L.rest.t, cut: L.sig.cut, guard: L.busyThr, log: L.log.map(e => e.msg) }; });
 
   // start the simulated camera from Setup, then go to Debug
+  check(!await mgr.page.locator('.mgr-tab[data-tab="debug"]').isVisible(), 'Setup and Debug start out hidden behind the lock');
+  await unlockManager(mgr.page);
   await mgr.page.click('.mgr-tab[data-tab="setup"]'); await mgr.page.click('[data-args]');
   check(await until(async () => (await H()).src === 'sim', 15000), 'Simulated camera is on');
   await mgr.page.click('.mgr-tab[data-tab="debug"]');

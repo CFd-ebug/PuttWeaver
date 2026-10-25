@@ -4,4 +4,10 @@ const fs = require('fs'), path = require('path');
 const dist = (f, role = 'host') => 'file://' + path.join(__dirname, '..', '..', 'dist', f) + (role ? '#' + role : '');
 const out = path.join(__dirname, '..', 'out');            // screenshots land here (git-ignored)
 fs.mkdirSync(out, { recursive: true });
-module.exports = { dist, out };
+// Holds the Manager's lock button down like a finger would, so Setup and Debug appear.
+async function unlockManager(page){
+  const b = page.locator('#mgrLock'); await b.scrollIntoViewIfNeeded();
+  const r = await b.boundingBox(); await page.mouse.move(r.x + r.width / 2, r.y + r.height / 2);
+  await page.mouse.down(); await page.waitForTimeout(1200); await page.mouse.up();
+}
+module.exports = { dist, out, unlockManager };
