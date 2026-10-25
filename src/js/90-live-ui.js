@@ -423,7 +423,10 @@ function drawLiveOverlay(){
   if (LIVE.on){
     const hold = LIVE.busy && (LIVE.state === 'ready' || LIVE.state === 'arming');
     const lbl = hold ? 'HOLD ON · MOVEMENT ON THE SHEET' : {arming:'SETTING UP · KEEP THE SHEET CLEAR', ready:'READY · PUTT WHEN THE SHEET IS CLEAR', rolling:'TRACKING', stopped:'READING', collect: state.clock - LIVE.lastSeen > 0.5 ? 'NEXT UP…' : 'PICK UP YOUR BALL'}[LIVE.state] || '';
-    if (lbl) pill(lbl, W/2, 0.09*K, 0.055*K, 'rgba(16,22,46,0.85)', '#ffffff', {font:'mono', weight:500});
+    if (ROLE === 'host' && !LIVE.dbg && !LIVE.fpsHud){            // players get the numbered banners; the status pill stays for debugging and for "hold on"
+      flowDrawBanner();
+      if (hold) pill(lbl, W/2, 0.28*K, 0.055*K, 'rgba(16,22,46,0.85)', '#ffffff', {font:'mono', weight:500});
+    } else if (lbl) pill(lbl, W/2, 0.09*K, 0.055*K, 'rgba(16,22,46,0.85)', '#ffffff', {font:'mono', weight:500});
   }
   if (LIVE.dbg && LIVE.src && LIVE.sampling !== 'ball') drawDebug();
   if (LIVE.fpsHud) drawFpsHud();

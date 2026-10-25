@@ -566,6 +566,7 @@ function liveTick(){
   if (LIVE.src === 'sim'){ const now = performance.now(); if (proj && now - simCam.last > 33){ simCam.last = now; if (simRender()){ LIVE.newFrame = true; noteCamFrame(); } } }
   if (LIVE.newFrame){ LIVE.newFrame = false; processFrame(); }
   if (!LIVE.on) return;
+  if (FLOW.phase === 'select'){ flowTick(); return; }               // the players are picking the next game on the controller
   if (LIVE.state === 'stopped' && (mode === 'result' || mode === 'over')){ LIVE.state = 'collect'; LIVE.resultAt = state.clock; }
   if (LIVE.state === 'arming'){ if (mode === 'aim') armTick(); else { LIVE.state = 'collect'; LIVE.resultAt = state.clock - 2.5; } }
   if (LIVE.state === 'collect'){
@@ -575,7 +576,7 @@ function liveTick(){
     const still = state.clock - LIVE.busyAt > 0.8 || gone > LIVE.clearT + 6;
     if (state.clock - LIVE.resultAt > 2.5 && gone > LIVE.clearT && still){
       if (mode === 'result'){ advance(); if (mode === 'over'){ LIVE.resultAt = state.clock; llog('Hole complete'); } }
-      else if (mode === 'over' && state.clock - LIVE.resultAt > 6){ startGame(); llog('New game'); }
+      else if (mode === 'over' && state.clock - LIVE.resultAt > 6){ if (flowCanSelect()) flowSelectStart(); else { startGame(); llog('New game'); } }
       if (mode === 'aim'){ armReady(); llog('Sheet clear; setting up the next round'); }
     }
   }
