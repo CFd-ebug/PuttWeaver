@@ -55,7 +55,7 @@ const TEST_HOOK = `window.__lab = { tick, draw, putt, place, advance, startGame,
   select(i){ gameIdx=i; startGame(); }, set(k,v){ S[k]=v; }, setOpt(g,k,v){ setOpt(g,k,v); },
   get mode(){ return mode; }, get game(){ return game; }, get ball(){ return ball; },
   get W(){ return W; }, get D(){ return D; }, get TEE(){ return TEE; }, get shot(){ return shot; },
-  get LIVE(){ return LIVE; }, liveReport, homApply, enterProj, toggleFit, sheetCornersFrac, simCam, sheetPicture, FLOW, flowSelectStart, flowTick, flowStep };`;
+  get LIVE(){ return LIVE; }, liveReport, homApply, enterProj, toggleFit, sheetCornersFrac, simCam, sheetPicture, FLOW, flowSelectStart, flowTick, flowStep, flowAfterHole, flowCompare };`;
 
 // ---- offline wrapper: embedded fonts + full document skeleton ----
 const fontDir = path.join(root, 'assets', 'fonts');

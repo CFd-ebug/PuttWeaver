@@ -33,7 +33,7 @@ function gameStep(d){                     // next or previous game that is shown
 const REMOTE_CMDS = {
   next(){ gameStep(1); },
   prev(){ gameStep(-1); },
-  game(a){ const i = Number(a && a.idx); if (!(i >= 0 && i < GAMES.length)) throw new Error('No such game'); gameIdx = i; startGame(); if (LIVE.on) armReady(); },
+  game(a){ const i = Number(a && a.idx); if (!(i >= 0 && i < GAMES.length)) throw new Error('No such game'); if (FLOW.phase === 'results'){ FLOW.queued = i; REMOTE.key = ''; return; } gameIdx = i; startGame(); if (LIVE.on) armReady(); },
   shown(a){
     const ids = a && Array.isArray(a.ids) ? a.ids.filter(id => GAMES.some(g => g.id === id)) : null;
     if (!ids || !ids.length) throw new Error('Show at least one game');
@@ -43,6 +43,7 @@ const REMOTE_CMDS = {
   hover(a){ const i = Number(a && a.idx); FLOW.hover = i >= 0 && i < GAMES.length ? i : -1; FLOW.hoverAt = state.clock; },
   cfg(a){                                                                    // settings for what the players see
     if (a && a.banner != null){ const v = Number(a.banner); if (!isFinite(v)) throw new Error('Not a number'); FLOW.bannerSecs = clamp(Math.round(v), 0, 30); flowSave(); }
+    if (a && a.results != null){ const v = Number(a.results); if (!isFinite(v)) throw new Error('Not a number'); FLOW.resultsSecs = clamp(Math.round(v), 0, 60); flowSave(); }
   },
   restart(){ startGame(); if (LIVE.on) armReady(); },
   skip(){ skipRound(); },
@@ -152,6 +153,7 @@ function remoteBall(){
   } else if (ball && ball.visible && onSheet(ball.x, ball.y)) p = ball;
   return p ? {x: Math.round(p.x * 50) / 50, y: Math.round(p.y * 50) / 50} : null;
 }
+function remoteUse(){ const u = relayUse(), q = 262144; return {m: u.m, up: Math.round(u.up / q) * q, down: Math.round(u.down / q) * q}; }
 function remoteSnapshot(){
   if (!game) return null;
   const h = game.hole ? game.hole() : null;
@@ -160,8 +162,8 @@ function remoteSnapshot(){
     game: {idx: gameIdx, id: game.id, name: game.name, status: mode === 'over' ? 'Hole complete' : game.status(), how: game.how},
     games: GAMES.map(g => g.name),
     gids: GAMES.map(g => g.id),
-    phase: FLOW.phase,                       // 'play', or 'select' while the projector asks the players to pick the next game
-    banner: FLOW.bannerSecs,
+    phase: FLOW.phase,                       // 'play'; 'results' while the hole's results show; 'select' while the projector asks the players to pick the next game
+    banner: FLOW.bannerSecs, results: FLOW.resultsSecs,
     pj: flowLabel(),                         // what the projector shows, for the controller's status chip
     shown: GAMES.map((g, i) => shownIds.includes(g.id) ? i : -1).filter(i => i >= 0),
     hint: $('hint').textContent,
@@ -169,6 +171,7 @@ function remoteSnapshot(){
     hole: h ? {par: h.par, strokes: h.list.map(e => e.strokes == null ? null : e.strokes), final: !!h.final} : null,
     live: {src: LIVE.src || '', on: !!LIVE.on, state: LIVE.on ? LIVE.state : 'off', cal: !!LIVE.Hcs, fps: Math.round(LIVE.camFps || 0), ms: Math.round(LIVE.procMs || 0)},
     ball: remoteBall(),
+    use: remoteUse(),                             // this device's own relay traffic this month, in 256 KB steps (see 07-relay.js)
     sr: [SHOTS.rev, statsRev],                    // changes when new shots or totals are in the database (96-remote-shots.js)
     setup: remoteWants() ? remoteSetup() : undefined,
     debug: remoteWantsDebug() ? remoteDebug() : undefined

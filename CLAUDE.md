@@ -33,7 +33,7 @@ src/js/               engine code, concatenated in filename order into one scrip
   04-worldmap.js        draws the world map picture (shared by Map Quest and the Manager console)
   05-role.js            roles (Evaluator, Host, Manager): resolves ROLE from the address, role switch dialog
   06-qr.js              offline QR code generator for the pairing screen
-  07-relay.js           the only network code: Firebase Realtime Database REST client, streaming, self-test
+  07-relay.js           the only network code: Firebase Realtime Database REST client, streaming, self-test, a monthly count of this device's own traffic
   08-gamepick.js        the Manager's game picker tiles (picture plus looping animation); before 08-manager.js, which returns before the engine starts
   08-howto.js           canvas drawing of the three how-to pictures and the person animation (shared by the projector and the console); before 08-manager.js
   08-manager.js         the Manager console and pairing helpers; the Manager returns here, before the engine starts
@@ -50,6 +50,7 @@ src/js/               engine code, concatenated in filename order into one scrip
   95-remote-host.js     the Host side of the console: pairing dialog, state publisher, command table
   96-remote-shots.js    the Host records each shot (path, picture) and the play statistics for the console; Evaluators never count
   97-flow.js            what the players see: banners 1-3, the "Pick your game" screen between games, Putt now timing
+  98-results.js         the results screen after a hole (score, comparison with earlier players, putt replays)
   99-boot.js            start-up
 src/games/            one file per game, plus games.json (play order)
 src/data/             generated data: map.js (Natural Earth), elements.js (written by scripts/gen-elements.js), previews.js (game pictures for the picker, written by scripts/gen-previews.js)

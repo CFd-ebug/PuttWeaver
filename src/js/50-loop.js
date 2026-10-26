@@ -115,7 +115,7 @@ function drawProj(){
   if (projTest){ drawTestCard(); ctx.restore(); return; }
   if (REMOTE.hold){ drawHold(); ctx.restore(); return; }       // the console is holding the screen (95-remote-host.js)
   ctx.fillStyle='#f8f8f5'; ctx.fillRect(0,0,W,D);
-  if (FLOW.phase === 'select'){ ctx.save(); flowDrawSelect(); ctx.restore(); setWorld(); drawLiveOverlay(); ctx.restore(); return; }     // between games the players pick the next one (97-flow.js)
+  if (FLOW.phase !== 'play'){ ctx.save(); if (FLOW.phase === 'results') flowDrawResults(); else flowDrawSelect(); ctx.restore(); setWorld(); drawLiveOverlay(); ctx.restore(); return; }     // between games the players pick the next one (97-flow.js)
   ctx.save(); game.drawSheet(); ctx.restore(); setWorld();
   if (SHOTS.snap) remoteSnapSheet();
   if (S.washed){ ctx.fillStyle='rgba(238,238,230,0.38)'; ctx.fillRect(0,0,W,D); }

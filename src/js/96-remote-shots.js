@@ -68,6 +68,7 @@ function remoteSnapSheet(){
 function remoteShotSend(img){
   const rec = SHOTS.rec; if (!rec || rec.sent) return; rec.sent = true; clearTimeout(SHOTS.timer); SHOTS.snap = false;
   const out = Object.assign({}, rec); delete out.sent; if (img && img.length < 60000) out.img = img;
+  flowKeepShot(out);
   relayPut(statsBase() + 'shots/' + rec.n, out).then(() => { SHOTS.rev++; REMOTE.key = ''; }).catch(() => {});
 }
 

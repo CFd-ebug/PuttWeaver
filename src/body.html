@@ -26,6 +26,7 @@
         <span class="dot" id="mgrDotHost"></span><span id="mgrHostTxt">Host: waiting</span>
         <span class="mono" id="mgrTrack"></span>
         <span class="mono" id="mgrVer"></span>
+        <span class="mgr-warn" id="mgrUseStrip" hidden></span>
         <button class="btn key small" id="mgrFull" type="button" hidden>Full screen</button>
       </div>
       <nav class="mgr-tabs" role="tablist" aria-label="Console sections">
@@ -77,6 +78,31 @@
           <p class="help">Players are offered the games switched on. Next and Previous game skip the others. The Evaluator page always has every game.</p>
           <div class="gs-list" id="mgrShownList"></div>
           <p class="help" id="mgrShownMsg" role="status" aria-live="polite"></p>
+        </div>
+        <div class="ps-wrap">
+        <div class="card ps-card" id="mgrPlayCard">
+          <div class="eyebrow">Players’ screen</div>
+          <div class="ps-row"><div class="ps-txt"><b>Results screen</b><span>How long the results stay on the projector after a hole. 0 skips them. A game picked on this console meanwhile starts when they end.</span></div>
+            <div class="ps-step" role="group" aria-label="Results screen length"><button class="btn key small" data-step="results,-5" type="button" aria-label="Shorter">−</button><output class="mono" id="mgrResultsV">…</output><button class="btn key small" data-step="results,5" type="button" aria-label="Longer">+</button></div></div>
+          <div class="ps-row"><div class="ps-txt"><b>Putt now banner</b><span>How long it stays on the sheet once the round is ready. 0 switches it off.</span></div>
+            <div class="ps-step" role="group" aria-label="Putt now banner length"><button class="btn key small" data-step="banner,-1" type="button" aria-label="Shorter">−</button><output class="mono" id="mgrBannerV">…</output><button class="btn key small" data-step="banner,1" type="button" aria-label="Longer">+</button></div></div>
+        </div>
+        <div class="card ps-card" id="mgrStatCard">
+          <div class="eyebrow">Play statistics</div>
+          <p class="help" id="mgrStatTxt"></p>
+          <div class="ps-btns" id="mgrStatBtns"><button class="btn key small" id="mgrStatReset" type="button">Reset statistics…</button></div>
+          <div class="ps-sure" id="mgrStatSure" role="alertdialog" aria-labelledby="mgrStatSureT" hidden>
+            <b id="mgrStatSureT">Delete all play statistics?</b><span id="mgrStatSureD"></span>
+            <div class="ps-btns"><button class="btn key small" id="mgrStatNo" type="button">Cancel</button><button class="btn key small ps-yes" id="mgrStatYes" type="button">Yes, delete everything</button></div>
+          </div>
+          <p class="help" id="mgrStatMsg" role="status" aria-live="polite"></p>
+        </div>
+        <div class="card ps-card" id="mgrUseCard">
+          <div class="eyebrow">Firebase usage</div>
+          <div class="ps-use"><b class="mono" id="mgrUsePct">—</b><div class="ps-bar"><i id="mgrUseBar"></i><span class="ps-mark" aria-hidden="true"></span></div></div>
+          <p class="help" id="mgrUseTxt"></p>
+          <p class="ps-warn" id="mgrUseWarn" role="alert" hidden></p>
+        </div>
         </div>
       </div>
       <div class="mgr-grid" id="mgrTabDebug" hidden>

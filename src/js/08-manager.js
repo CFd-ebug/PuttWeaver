@@ -104,9 +104,11 @@ function runManager(){
     }
     else if (!el('mgrPick').hidden) markPickCurrent(st.game.idx);
     if (!el('mgrPick').hidden) say('mgrPickPj', st.pj || '—');
-    if (st.phase === 'select' && lastPhase !== 'select' && el('mgrPick').hidden) pickShow();                  // the projector is asking: open the picker at once
-    else if (st.phase !== 'select' && lastPhase === 'select' && !el('mgrPick').hidden) pickClose();          // a game was chosen somewhere else
+    const asking = p => p === 'select' || p === 'results';
+    if (asking(st.phase) && (st.phase === 'select' ? lastPhase !== 'select' : !asking(lastPhase)) && el('mgrPick').hidden) pickShow();   // the projector shows the results or asks: open the picker at once
+    else if (!asking(st.phase) && asking(lastPhase) && !el('mgrPick').hidden) pickClose();                   // a game was chosen somewhere else
     lastPhase = st.phase || '';
+    renderPlay(st); renderStat(); renderUse(st);
     const l = st.live || {}, tb = el('mgrTrackBtn');
     tb.textContent = l.on ? 'Pause tracking' : 'Start tracking'; tb.setAttribute('aria-pressed', String(!!l.on)); tb.disabled = !l.src || !l.cal;
     el('mgrHoldBtn').setAttribute('aria-pressed', String(!!st.hold)); el('mgrHoldBtn').textContent = st.hold ? 'Resume game' : 'Hold screen';
@@ -335,6 +337,10 @@ function runManager(){
     if (b.classList.contains('gs-k')){ const id = b.dataset.gid, on = b.dataset.on === '1'; setShown(on ? (shownIds.includes(id) ? shownIds : shownIds.concat(id)) : shownIds.filter(x => x !== id)); return; }
     if (b.id === 'mgrShownRec'){ setShown(SHOWN_REC.filter(id => ((lastState && lastState.gids) || []).includes(id))); return; }
     if (b.id === 'mgrShownAll'){ setShown((lastState && lastState.gids) || []); return; }
+    if (b.dataset.step){ const [k, d] = b.dataset.step.split(','); stepPlay(k, Number(d)); return; }
+    if (b.id === 'mgrStatReset'){ statSure(true); return; }
+    if (b.id === 'mgrStatNo'){ statSure(false); return; }
+    if (b.id === 'mgrStatYes'){ statReset(); return; }
     if (b.classList.contains('tc') && !confirmTap(b)) return;
     if (b.dataset.spd){ repSpd = Number(b.dataset.spd); el('mgrRepSpd').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); repT0 = performance.now(); return; }
     if (b.dataset.shot){ repSel = Number(b.dataset.shot); repAuto = repSel === shotList.length - 1; repT0 = performance.now(); renderDash(); return; }
@@ -349,6 +355,40 @@ function runManager(){
   el('mgrFitBtn').addEventListener('click', () => send('fit', {on: !(lastState && lastState.setup && lastState.setup.fit)}));
   el('mgrHoldBtn').addEventListener('click', () => send('hold', {on: !(lastState && lastState.hold)}));
 
+
+  // ---------- Setup: players' screen, statistics, usage ----------
+  const psHold = {results: 0, banner: 0}, psVal = {}, psTimer = {};
+  function renderPlay(st){
+    const get = k => Date.now() < psHold[k] ? psVal[k] : st[k], rs = get('results'), bn = get('banner');
+    say('mgrResultsV', rs == null ? '…' : rs ? rs + ' s' : 'Skipped'); say('mgrBannerV', bn == null ? '…' : bn ? bn + ' s' : 'Off');
+  }
+  function stepPlay(k, d){
+    const st = lastState || {}, cur = Date.now() < psHold[k] ? psVal[k] : st[k]; if (cur == null) return;
+    const v = Math.min(k === 'results' ? 60 : 30, Math.max(0, cur + d)); psVal[k] = v; psHold[k] = Date.now() + 2500; renderPlay(st);
+    clearTimeout(psTimer[k]); psTimer[k] = setTimeout(() => send('cfg', {[k]: v}), 400);          // the last tap wins
+  }
+  function renderStat(){
+    const n = Number(statsData && statsData.n) || 0;
+    say('mgrStatTxt', n ? n + (n === 1 ? ' hole has' : ' holes have') + ' been played on this rig. Players on the Evaluator page are never counted.' : 'Nobody has finished a hole yet. Players on the Evaluator page are never counted.');
+    el('mgrStatReset').disabled = !n && !shotList.length;
+  }
+  const useLimit = 10e9, useWarnAt = 70;                                   // the free plan allows 10 GB of downloads a month
+  const fmtB = b => b >= 1e9 ? (b / 1e9).toFixed(2) + ' GB' : b >= 1e6 ? (b / 1e6).toFixed(1) + ' MB' : Math.round(b / 1e3) + ' KB';
+  function renderUse(st){
+    const own = relayUse(), h = st && st.use && st.use.m === own.m ? st.use : null, down = own.down + (h ? h.down : 0), pct = down / useLimit * 100, hot = pct >= useWarnAt;
+    say('mgrUsePct', (pct < 10 ? pct.toFixed(1) : Math.round(pct)) + '%');
+    el('mgrUseBar').style.width = Math.max(1, Math.min(100, pct)) + '%'; el('mgrUseCard').classList.toggle('hot', hot);
+    say('mgrUseTxt', 'About ' + fmtB(down) + ' of the 10 GB of downloads the free plan allows this month (' + own.m + '). Counted: ' + (h ? 'the Host and this console.' : 'this console only; the Host has not reported yet.') + ' Other consoles are not counted, so check Usage in the Firebase console before a big event.');
+    el('mgrUseWarn').hidden = !hot; el('mgrUseStrip').hidden = !hot;
+    if (hot){ say('mgrUseWarn', 'More than ' + useWarnAt + '% of this month’s free downloads are used. Close the Setup and Debug tabs when you are not using them (they stream camera pictures), keep the number of open consoles low, and check the Firebase console.'); say('mgrUseStrip', 'Firebase usage ' + Math.round(pct) + '%'); }
+  }
+  function statSure(on){ el('mgrStatSure').hidden = !on; el('mgrStatBtns').hidden = on; if (on) say('mgrStatSureD', 'This removes the scores, the comparisons and the shot replays for every game. It cannot be undone.'); }
+  async function statReset(){
+    statSure(false); say('mgrStatMsg', 'Deleting…');
+    const ack = await send('resetstats', {}, true);
+    if (ack && ack.ok){ statsData = {}; shotList = []; renderDash(); renderStat(); say('mgrStatMsg', 'All statistics were deleted.'); }
+    else say('mgrStatMsg', 'Could not delete: ' + (ack ? ack.error : 'no answer from the Host.'));
+  }
 
   // ---------- Setup tab ----------
   function showTab(name){
