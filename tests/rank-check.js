@@ -15,8 +15,8 @@ const { dist, out } = require('./lib');
   const timeout = await page.evaluate(() => [document.getElementById('rTitle').textContent, document.getElementById('rDetail').textContent, window.__lab.mode]);
   await page.locator('label:has(#opt-seek-time-none)').click();
   // play one Crowd Search hole with real drags
-  const box = await page.locator('#stage').boundingBox();
   for (let i = 0; i < 4; i++){
+    const box = await page.locator('#stage').boundingBox();      // measured each time: tapping Next can scroll the page
     const sx = box.x + box.width/2, sy = box.y + box.height*0.78;
     await page.mouse.move(sx, sy); await page.mouse.down(); await page.mouse.move(sx + (i-1.5)*20, sy + 120, { steps: 4 }); await page.mouse.up();
     await page.waitForFunction(() => !document.getElementById('result').hidden, null, { timeout: 20000 });
