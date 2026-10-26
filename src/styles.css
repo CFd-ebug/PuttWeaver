@@ -376,7 +376,7 @@ body.role-manage{color-scheme:light;background:#fff;color:#0a0a0a;font-family:"I
 .d-pst.hard .d-meter i{background:#e5002b}.d-pst.mid .d-meter i{background:#0a0a0a}
 .d-ctl .mgr-btns{grid-template-columns:repeat(auto-fit,minmax(11em,1fr));gap:.9em}
 .d-thd{display:flex;justify-content:space-between;align-items:center;gap:1em}
-.sw{display:flex;gap:.4em}.sw button{border:.125em solid #0a0a0a;background:#fff;font:600 1.1em/1 "IBM Plex Mono",monospace;padding:.5em .7em;min-width:3em;border-radius:0}.sw button.on{background:#0a0a0a;color:#fff}
+.d-sw{display:flex;gap:.4em}.d-sw button{border:.125em solid #0a0a0a;background:#fff;font:600 1.1em/1 "IBM Plex Mono",monospace;padding:.5em .7em;min-width:3em;border-radius:0}.d-sw button.on{background:#0a0a0a;color:#fff}
 .d-replay canvas,.d-world canvas{display:block;width:100%;height:auto;border:.1875em solid #0a0a0a;background:#eef0f7}
 .rep-ctl{display:flex;justify-content:space-between;align-items:center;margin-top:.7em;font-size:1.1em}
 .d-spd{display:inline-flex}.d-spd button{border:.125em solid #0a0a0a;background:#fff;font:700 1.5em/1 "Inter",sans-serif;padding:.5em .8em;border-radius:0}.d-spd button[aria-pressed="true"]{background:#0a0a0a;color:#fff}
