@@ -345,8 +345,8 @@ body.role-manage{color-scheme:light;background:#fff;color:#0a0a0a;font-family:"I
 .role-manage .mgr-tab{border-radius:0;font-weight:700;border:.1875em solid #0a0a0a;border-bottom:0}
 .role-manage .mgr-tab[aria-selected="true"]{background:#0a0a0a;color:#fff}
 .dash{display:grid;gap:1.25em;grid-template-columns:1fr}
-@media (min-width:1100px){.dash{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);align-items:start}}
-.dash-main,.dash-side{display:grid;gap:1.25em;min-width:0;align-content:start}
+.dash-a,.dash-b,.dash-c{display:grid;gap:1.25em;min-width:0;align-content:start}
+@media (min-width:1100px){.dash{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);align-items:start}.dash-a{grid-column:1;grid-row:1}.dash-b{grid-column:1;grid-row:2}.dash-c{grid-column:2;grid-row:1 / span 2}}
 .d-now h2{font-size:6.5em;line-height:.95;margin:0 0 .15em}
 .d-now .mgr-status{font-size:2em;font-weight:700;letter-spacing:-.03em;margin:0}
 .d-hint{margin:.4em 0 0;font-size:1.5em;color:#555;line-height:1.3}
@@ -540,3 +540,63 @@ body.role-manage.sw{--sw-fs:14px}
 .role-manage .mgr-lock{font:700 1em/1.2 "Inter",sans-serif;border:var(--bw) dashed #0a0a0a;border-radius:0;color:#0a0a0a;padding:.45em .9em}
 .role-manage .mgr-lock[data-s="open"]{border-style:solid;background:#1a3cff;color:#fff;border-color:#1a3cff}
 .role-manage .mgr-lockfill{background:#1a3cff;opacity:.35}
+
+/* ===== Manager on a wide tablet (about 16:10, e.g. 2960 x 1848): everything fits one screen, no scrolling =====
+   The page is a canvas of 160 em x 100 em (the font size is the smaller of width/160 and height/100). Run and Setup are three columns.
+   If something ever needs more room than that, the page simply scrolls, as it does on a narrower screen. */
+@media (min-width:1100px) and (min-aspect-ratio:7/5){
+  body.role-manage.sw{--sw-fs:min(100vw / 160, 100vh / 100);padding:.5em 1em .4em}
+  .role-manage [hidden]{display:none!important}
+  body.role-manage .app{min-height:calc(100vh - .9em);gap:.5em}
+  .role-manage .mgr{font-size:var(--sw-fs);padding:0;flex:1;display:flex;flex-direction:column;gap:.5em;min-height:0}
+  .role-manage .mgr-run{flex:1;display:flex;flex-direction:column;min-height:0}
+  .role-manage .mgr-strip{padding:.4em 0;margin-bottom:.5em}
+  .role-manage .mgr-tabs{margin-bottom:0}
+  .role-manage .mgr-foot{margin-top:auto;padding-top:.3em}
+  .role-manage .sw .role-bar,.sw .role-bar{padding-top:0}
+  .role-manage #mgrTabRun,.role-manage #mgrTabSetup,.role-manage #mgrTabDebug{flex:1;min-height:0;margin-top:0}
+  .role-manage .card{padding:.8em 1.1em}
+
+  /* Run: A now playing + score + controls, B this hole + ball, C replay + map */
+  .role-manage .dash{grid-template-columns:repeat(3,minmax(0,1fr));gap:1.1em;align-items:stretch}
+  .role-manage .dash-a,.role-manage .dash-b,.role-manage .dash-c{display:flex;flex-direction:column;gap:1.1em;min-height:0;grid-column:auto;grid-row:auto}
+  .role-manage .d-now{flex:1}
+  .d-now h2{font-size:5.6em;overflow-wrap:anywhere}
+  .d-now .mgr-status{font-size:2.2em}
+  .d-hint{font-size:1.6em}
+  .role-manage .d-now .mgr-result b{font-size:2.2em}.role-manage .d-now .mgr-result span{font-size:1.5em}.role-manage .d-now .mgr-hole{font-size:1.3em}
+  .role-manage .d-ctl .mgr-btns{grid-template-columns:repeat(4,minmax(0,1fr));gap:.7em}
+  .role-manage .d-ctl .btn.key{font-size:1.45em;min-height:3.6em;padding:.4em .4em}
+  .role-manage .d-shots{flex:1;min-height:0;display:flex;flex-direction:column}
+  .role-manage .d-shots-list{overflow:auto;min-height:0;gap:.6em}
+  .d-shot{padding:.5em .7em;gap:.1em .8em}
+  .d-shot .no{font-size:1.3em;padding:.4em .5em}
+  .d-shot .sb b{font-size:1.65em}.d-shot .sb span{font-size:1.1em;margin-top:.1em}
+  .d-pst{padding-top:.35em;gap:.3em;grid-template-columns:auto 1fr;align-items:center;column-gap:.7em}
+  .d-pst .lab{grid-column:1 / -1}.d-pst b{font-size:1.7em;margin-right:.3em}.d-meter{grid-column:1 / -1;height:.5em}
+  .role-manage .d-world{flex:1}
+  .role-manage .d-ladder{padding-bottom:.6em}
+  .d-pip{font-size:3.4em}
+  .d-dist{height:6em}
+
+  /* Setup: checklist | games (two columns of five) over camera, players' screen, statistics and usage */
+  .role-manage #mgrTabSetup{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.1em;align-content:start;align-items:start}
+  .role-manage #mgrTabSetup .mgr-check{grid-column:1;grid-row:1 / span 4}
+  .role-manage #mgrTabSetup .gs-card{grid-column:2 / 4;grid-row:1}
+  .role-manage #mgrTabSetup .mgr-prev,.role-manage #mgrTabSetup .mgr-fit{grid-column:2;grid-row:2 / span 3}
+  .role-manage #mgrTabSetup .ps-wrap{display:contents}
+  .role-manage #mgrTabSetup #mgrPlayCard{grid-column:3;grid-row:2}
+  .role-manage #mgrTabSetup #mgrStatCard{grid-column:3;grid-row:3}
+  .role-manage #mgrTabSetup #mgrUseCard{grid-column:3;grid-row:4}
+  .role-manage .mgr-prev:has(~ #mgrFitCard:not([hidden])){display:none}
+  .role-manage #mgrTabSetup .mgr-check{align-self:stretch}
+  .role-manage #mgrTabDebug{display:grid;align-content:start;align-items:start}
+  .role-manage .mgr-list{gap:1.3em;margin-top:.7em;font-size:1.15em}
+  .role-manage .mgr-list .st{font-size:1em}.role-manage .mgr-list .note{font-size:.95em}
+  .role-manage .mgr-list .mgr-btns .btn{font-size:1em;padding:.6em .5em}
+  .role-manage .mgr-list .mgr-btns{grid-template-columns:repeat(auto-fit,minmax(11em,1fr));gap:.6em}
+  .gs-row{padding:.65em 0;gap:1em}.gs-th{width:7em}.gs-nm small{font-size:1em}.gs-nm b{font-size:1.7em;margin-top:.15em}
+  .gs-k{height:3em;min-width:4.2em;font-size:1.3em}
+  .gs-list{column-gap:2.5em}
+  .ps-row{padding:.6em 0}.ps-txt b{font-size:1.6em}.ps-txt span{font-size:1.05em}.ps-step output{font-size:1.6em;min-width:4.6em}
+}

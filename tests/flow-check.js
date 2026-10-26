@@ -47,7 +47,17 @@ const until = async (fn, ms = 10000, step = 100) => { const t0 = Date.now(); for
   check(await H(() => JSON.parse(localStorage.getItem('putt-lab-flow')).bannerSecs) === 9, 'The Host remembers it');
   fake.put('rooms/' + room + '/cmd/-Ncfg2', { type: 'cfg', args: { banner: 5 }, ts: Date.now(), ttl: 8000 });
   await H(() => { const L = window.__lab, a = L.game.autoPutt(); L.LIVE.on = false; L.putt(a.angle, a.frac); for (let i = 0; i < 4000 && L.mode !== 'result' && L.mode !== 'over'; i++) L.tick(1 / 60); L.LIVE.on = true; L.LIVE.state = 'collect'; L.LIVE.lastSeen = 1e9; });
-  check(await H(() => window.__lab.flowStep()) === 3, 'With the ball still on the sheet after a result the players see banner 3, Reset ball');
+  check(await H(() => window.__lab.flowStep()) === 0, 'Right after a result the players read how the putt went: no Reset ball banner yet');
+  check(await H(() => /^(Not close|Almost close|Close · −1 stroke)$/.test(window.__lab.lastResult.verdict)), 'Map Quest says whether the putt was close');
+  await H(() => { window.__lab.FLOW.resultAt -= 5; });
+  check(await H(() => window.__lab.flowStep()) === 3, 'A few seconds later, with the ball still on the sheet, the players see banner 3, Reset ball');
+  await H(() => { window.__lab.FLOW.resultAt = window.__lab.clock; });
+  fake.put('rooms/' + room + '/cmd/-Ncfg3', { type: 'cfg', args: { feedback: 0 }, ts: Date.now(), ttl: 8000 });
+  check(await until(() => { const s = fake.get('rooms/' + room + '/state'); return s && s.feedback === 0; }), 'The console can change how long the result shows before Reset ball');
+  check(await H(() => JSON.parse(localStorage.getItem('putt-lab-flow')).feedbackSecs) === 0, 'The Host remembers it');
+  check(await H(() => window.__lab.flowStep()) === 3, 'With 0 s the Reset ball banner comes at once');
+  fake.put('rooms/' + room + '/cmd/-Ncfg4', { type: 'cfg', args: { feedback: 4 }, ts: Date.now(), ttl: 8000 });
+  check(await until(() => { const s = fake.get('rooms/' + room + '/state'); return s && s.feedback === 4; }), 'And back to 4 s');
   await H(() => { window.__lab.LIVE.lastSeen = -1e9; });
   check(await H(() => window.__lab.flowStep()) === 0, 'Once the ball is picked up there is no banner');
   await sleep(500); await host.page.screenshot({ path: out + '/flow-banner.png' });

@@ -27,6 +27,7 @@
         <span class="mono" id="mgrTrack"></span>
         <span class="mono" id="mgrVer"></span>
         <span class="mgr-warn" id="mgrUseStrip" hidden></span>
+        <span class="mgr-warn" id="mgrSaveStrip" hidden></span>
         <button class="btn key small" id="mgrFull" type="button" hidden>Full screen</button>
       </div>
       <nav class="mgr-tabs" role="tablist" aria-label="Console sections">
@@ -86,6 +87,8 @@
             <div class="ps-step" role="group" aria-label="Results screen length"><button class="btn key small" data-step="results,-5" type="button" aria-label="Shorter">−</button><output class="mono" id="mgrResultsV">…</output><button class="btn key small" data-step="results,5" type="button" aria-label="Longer">+</button></div></div>
           <div class="ps-row"><div class="ps-txt"><b>Putt now banner</b><span>How long it stays on the sheet once the round is ready. 0 switches it off.</span></div>
             <div class="ps-step" role="group" aria-label="Putt now banner length"><button class="btn key small" data-step="banner,-1" type="button" aria-label="Shorter">−</button><output class="mono" id="mgrBannerV">…</output><button class="btn key small" data-step="banner,1" type="button" aria-label="Longer">+</button></div></div>
+          <div class="ps-row"><div class="ps-txt"><b>Result before Reset ball</b><span>How long the players read how their putt went before the sheet asks them to reset the ball. 0 asks at once.</span></div>
+            <div class="ps-step" role="group" aria-label="Result time before the reset banner"><button class="btn key small" data-step="feedback,-1" type="button" aria-label="Shorter">−</button><output class="mono" id="mgrFeedbackV">…</output><button class="btn key small" data-step="feedback,1" type="button" aria-label="Longer">+</button></div></div>
         </div>
         <div class="card ps-card" id="mgrStatCard">
           <div class="eyebrow">Play statistics</div>
@@ -147,7 +150,7 @@
         </div>
       </div>
       <div class="dash" id="mgrTabRun">
-        <div class="dash-main">
+        <div class="dash-a">
           <section class="card d-now">
             <div class="eyebrow">Now playing</div>
             <h2 id="mgrGame">—</h2>
@@ -157,7 +160,6 @@
             <div class="mgr-hole" id="mgrHole"></div>
           </section>
           <section class="card d-ladder" id="mgrLadder" aria-label="Hole scores of everyone who played this game"></section>
-          <section class="card d-shots"><div class="eyebrow">This hole</div><div id="mgrShots" class="d-shots-list"><p class="d-empty">No shots yet.</p></div></section>
           <section class="card mgr-ctl d-ctl">
             <div class="mgr-btns">
               <button class="btn key tc" data-cmd="prev" type="button">Previous game</button>
@@ -172,7 +174,15 @@
             <p class="help" id="mgrCmdMsg" role="status" aria-live="polite"></p>
           </section>
         </div>
-        <div class="dash-side">
+        <div class="dash-b">
+          <section class="card d-shots"><div class="eyebrow">This hole</div><div id="mgrShots" class="d-shots-list"><p class="d-empty">No shots yet.</p></div></section>
+          <section class="card mgr-map">
+            <div class="eyebrow">Ball on the sheet</div>
+            <canvas id="mgrMap" width="480" height="270" aria-label="Where the camera sees the ball"></canvas>
+            <p class="help mono" id="mgrBall"></p>
+          </section>
+        </div>
+        <div class="dash-c">
           <section class="card d-replay">
             <div class="d-thd"><div class="eyebrow" id="mgrRepHead">Replay</div><div class="d-sw" id="mgrRepSw" role="group" aria-label="Choose a shot to replay"></div></div>
             <canvas id="mgrReplay" width="640" height="360" aria-label="Replay of the last shot on the projected sheet"></canvas>
@@ -182,11 +192,6 @@
             <div class="eyebrow">Everyone · close rate by place</div>
             <canvas id="mgrWorld" width="960" height="540" aria-label="World map: each place is coloured by how often players get close"></canvas>
             <p class="d-key"><span class="easy">■</span> easy <span class="mid">■</span> mid <span class="hard">■</span> hard · <span id="mgrWorldN"></span></p>
-          </section>
-          <section class="card mgr-map">
-            <div class="eyebrow">Ball on the sheet</div>
-            <canvas id="mgrMap" width="480" height="270" aria-label="Where the camera sees the ball"></canvas>
-            <p class="help mono" id="mgrBall"></p>
           </section>
         </div>
       </div>
