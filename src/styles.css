@@ -383,7 +383,7 @@ body.role-manage{color-scheme:light;background:#fff;color:#0a0a0a;font-family:"I
 .d-key{margin:.6em 0 0;font:500 1em/1.3 "IBM Plex Mono",monospace;color:#555}.d-key .easy{color:#1a3cff}.d-key .mid{color:#0a0a0a}.d-key .hard{color:#e5002b}
 .role-manage .mgr-map canvas{border:.1875em solid #0a0a0a;border-radius:0}
 
-body.role-manage .app{max-width:none}
+body.role-manage .app{max-width:none;width:100%}
 
 /* Game picker overlay and Setup "Games shown" (Manager). Sizes in em, like the dashboard. */
 .gk-ov{position:fixed;left:0;top:0;right:0;bottom:0;z-index:60;background:rgba(10,10,10,.66);display:flex;align-items:flex-start;justify-content:center;padding:2.5em 3.5em;overflow:auto;font-size:14px}
@@ -467,3 +467,76 @@ body.role-manage .app{max-width:none}
 .ps-warn{margin:.4em 0 0;padding:.8em 1em;border:.1875em solid #e5002b;color:#e5002b;font-size:1.25em;font-weight:700;line-height:1.35}
 .mgr-warn{font-weight:700;color:#e5002b;border:.125em solid #e5002b;padding:.1em .6em}
 @media (max-width:1099px){.ps-row{flex-direction:column;align-items:flex-start}.ps-txt b{font-size:1.5em}.ps-use b{font-size:2em}}
+
+/* ===== Swiss Pop Light (shared components) =====
+   Switched on with the class "sw" on <body> (05-role.js, SW_ROLES). White page, black ink, 3 px black outlines, no rounded corners,
+   blue for "on" and "go", red for "no". Buttons are keys with a hard shadow. Sizes are in em so a page scales from its own font-size
+   (--sw-fs): the Manager console sets it from the screen width, the other pages use a fixed size. */
+body.sw{color-scheme:light;--bw:.1875em;--sw-ink:#0a0a0a;--sw-blue:#1a3cff;--sw-red:#e5002b;--sw-fs:15px;
+  --bg:#fff;--surface:#fff;--sunk:#f1f3f7;--ink:#0a0a0a;--muted:#555;--line:#c9c9c9;--accent:#1a3cff;--accent-ink:#fff;--flag:#e5002b;--good:#1a3cff;
+  background:#fff;color:#0a0a0a;font-family:"Inter","Atkinson Hyperlegible",system-ui,sans-serif;font-size:var(--sw-fs)}
+body.role-manage.sw{--sw-fs:14px}
+@media (min-width:1100px){body.role-manage.sw{--sw-fs:calc(100vw / 160)}}
+.sw .app{font-size:var(--sw-fs)}
+.sw .brand{gap:.8em}
+.sw h1{font:800 2.1em/1 "Inter",sans-serif;letter-spacing:-.05em;text-transform:uppercase}
+.sw .brand p{margin:.3em 0 0;font:500 .8em/1.2 "IBM Plex Mono",monospace;letter-spacing:.08em;text-transform:uppercase;color:#555}
+.sw .mark{width:2.6em;height:2.1em;border-radius:0;border:var(--bw) solid #0a0a0a;background:#fff}
+.sw .mark::after{width:.7em;height:.7em;background:#1a3cff;border:0;left:1.4em;top:.4em}
+.sw .mark::before{height:.15em;background:#e5002b;left:.35em;right:.35em;bottom:.35em}
+.sw .card{border:var(--bw) solid #0a0a0a;border-radius:0;background:#fff;box-shadow:none;padding:1em 1.25em}
+.sw .eyebrow{font:500 .85em/1 "IBM Plex Mono",monospace;letter-spacing:.1em;text-transform:uppercase;color:#555}
+.sw .help{font-size:.85em;color:#555}
+.sw .btn:not(.key){border:var(--bw) solid #0a0a0a;border-radius:0;background:#fff;color:#0a0a0a;font:700 1em/1.1 "Inter",sans-serif;letter-spacing:-.02em;padding:.5em .85em;box-shadow:0 .25em 0 #0a0a0a;margin-bottom:.25em}
+.sw .btn:not(.key):hover{border-color:#0a0a0a;background:#f1f3f7}
+.sw .btn:not(.key):active{transform:translateY(.2em);box-shadow:0 .05em 0 #0a0a0a}
+.sw .btn.primary:not(.key){background:#1a3cff;border-color:#1a3cff;color:#fff;box-shadow:0 .25em 0 #0a0a0a}
+.sw .btn.primary:not(.key):hover{background:#1a3cff}
+.sw .btn.small:not(.key){font-size:.9em;padding:.4em .7em}
+.sw .btn:disabled{opacity:.4;pointer-events:none}
+:is(.sw .btn,.sw summary,.sw select,.sw input,.sw textarea,.sw .chip,.sw .role-opt):focus-visible{outline:.19em solid #1a3cff;outline-offset:.19em}
+.sw input[type=text],.sw textarea,.sw select{border:var(--bw) solid #0a0a0a;border-radius:0;background:#fff;color:#0a0a0a;font-size:1em;padding:.45em .6em}
+.sw textarea{font:400 .8em/1.45 "IBM Plex Mono",monospace;background:#f1f3f7}
+.sw select{appearance:none;padding-right:2.2em;font-weight:700;background:#fff linear-gradient(45deg,transparent 50%,#0a0a0a 50%) calc(100% - 1.15em) 55%/.5em .5em no-repeat,linear-gradient(135deg,#0a0a0a 50%,transparent 50%) calc(100% - .8em) 55%/.5em .5em no-repeat}
+.sw .check{font-size:1em;gap:.6em}
+.sw .check input{appearance:none;width:1.25em;height:1.25em;border:var(--bw) solid #0a0a0a;border-radius:0;background:#fff;margin:0;flex:none;cursor:pointer}
+.sw .check input{display:inline-grid;place-items:center}
+.sw .check input:checked{background:#1a3cff;border-color:#0a0a0a}
+.sw .check input:checked::after{content:"";width:.3em;height:.6em;margin-top:-.12em;border:solid #fff;border-width:0 .17em .17em 0;transform:rotate(45deg)}
+.sw input[type=range]{appearance:none;height:1.4em;background:transparent;cursor:pointer;accent-color:#1a3cff}
+.sw input[type=range]::-webkit-slider-runnable-track{height:.3em;background:#0a0a0a}
+.sw input[type=range]::-moz-range-track{height:.3em;background:#0a0a0a}
+.sw input[type=range]::-webkit-slider-thumb{appearance:none;width:1.1em;height:1.4em;margin-top:-.55em;background:#1a3cff;border:var(--bw) solid #0a0a0a;border-radius:0}
+.sw input[type=range]::-moz-range-thumb{width:.8em;height:1.1em;background:#1a3cff;border:var(--bw) solid #0a0a0a;border-radius:0}
+.sw dialog.dlg{font-size:var(--sw-fs);border:var(--bw) solid #0a0a0a;border-radius:0;background:#fff;color:#0a0a0a;padding:1.2em 1.4em 1.4em;width:min(36em,calc(100vw - 2em));box-shadow:0 .5em 0 #0a0a0a}
+.sw dialog.dlg::backdrop{background:rgba(10,10,10,.6)}
+.sw .dlg-head{margin-bottom:1em}
+.sw .dlg-head h2{font:800 1.9em/1 "Inter",sans-serif;letter-spacing:-.05em;margin:0}
+.sw .dlg-foot{margin-top:1em}
+.sw .pair-body canvas{border:var(--bw) solid #0a0a0a;border-radius:0;width:min(14em,70vw)}
+.sw .pair-code{font:600 2.4em/1 "IBM Plex Mono",monospace;letter-spacing:.1em}
+.sw .role-opt{border:var(--bw) solid #0a0a0a;border-radius:0;background:#fff;padding:.8em 1em;box-shadow:0 .25em 0 #0a0a0a;margin-bottom:.25em;font-size:1em}
+.sw .role-opt b{font:800 1.3em/1.1 "Inter",sans-serif;letter-spacing:-.03em}
+.sw .role-opt span{font-size:.95em;color:#555}
+.sw .role-opt:hover{background:#f1f3f7;border-color:#0a0a0a}
+.sw .role-opt[aria-current="true"]{background:#1a3cff;color:#fff;box-shadow:0 .25em 0 #0a0a0a}.sw .role-opt[aria-current="true"] span{color:#fff;opacity:.9}
+.sw .role-bar{font:500 .85em/1.2 "IBM Plex Mono",monospace;letter-spacing:.04em;color:#555}
+.sw .role-bar b{color:#0a0a0a}
+.sw .mgr-foot{gap:.8em;padding-top:.4em}
+/* Manager: join screen and Debug tab */
+.role-manage .mgr-code{gap:.8em}
+.role-manage .mgr-code input{font:600 2.2em/1.1 "IBM Plex Mono",monospace;letter-spacing:.14em;border:var(--bw) solid #0a0a0a;border-radius:0;padding:.3em .5em;min-width:0}
+.role-manage #mgrJoin h2{font-size:2.4em;margin:0 0 .3em}.role-manage #mgrJoin p{font-size:1.2em}
+.role-manage #mgrJoin .btn.primary{font-size:1.5em;padding:.5em 1.2em}
+.role-manage .mgr-kv{font-size:1.15em;gap:.3em 1em}.role-manage .mgr-kv dt{color:#555}.role-manage .mgr-kv dd{font-family:"IBM Plex Mono",monospace;font-weight:600}
+.role-manage .mgr-kv dd[data-s="bad"]{color:#e5002b}.role-manage .mgr-kv dd[data-s="warn"]{color:#e5002b;text-decoration:underline}
+.role-manage .mgr-opts{gap:.6em 1.4em;margin:.6em 0;font-size:1.15em}
+.role-manage .mgr-sel{font-size:1.05em;color:#555;gap:.25em}.role-manage .mgr-sel select{font:700 1.1em "Inter",sans-serif;padding:.4em 2.2em .4em .6em}
+.role-manage .mgr-sliders{gap:.7em}
+.role-manage .mgr-sl{font-size:1.15em;gap:.7em}.role-manage .mgr-sl b{font:600 .95em "IBM Plex Mono",monospace}
+.role-manage .mgr-log{font-size:.95em}
+.role-manage .mgr-logcard textarea{font-size:.9em}
+.role-manage .mgr-prev canvas,.role-manage .mgr-fit canvas{border:var(--bw) solid #0a0a0a;border-radius:0}
+.role-manage .mgr-lock{font:700 1em/1.2 "Inter",sans-serif;border:var(--bw) dashed #0a0a0a;border-radius:0;color:#0a0a0a;padding:.45em .9em}
+.role-manage .mgr-lock[data-s="open"]{border-style:solid;background:#1a3cff;color:#fff;border-color:#1a3cff}
+.role-manage .mgr-lockfill{background:#1a3cff;opacity:.35}

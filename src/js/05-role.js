@@ -12,6 +12,7 @@ const ROLE_SUB = {
   manage: 'Management console'
 };
 const ROLE_KEY = 'putt-lab-role';
+const SW_ROLES = ['manage'];                     // roles that use the Swiss Pop Light look; the others still have the older one
 function roleFromHash(){ const h = (location.hash || '').slice(1).split('=')[0]; return ROLE_INFO[h] ? h : null; }
 function resolveRole(){
   const fromHash = roleFromHash();
@@ -22,6 +23,7 @@ function resolveRole(){
 }
 const ROLE = resolveRole();
 document.body.classList.add('role-' + ROLE);
+if (SW_ROLES.includes(ROLE)) document.body.classList.add('sw');              // the Swiss Pop Light look (styles.css, "Swiss Pop Light")
 
 (function bindRoleUi(){
   const el = id => document.getElementById(id);
