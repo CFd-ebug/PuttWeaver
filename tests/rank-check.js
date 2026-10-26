@@ -17,7 +17,7 @@ const { dist, out } = require('./lib');
   // play one Crowd Search hole with real drags
   const box = await page.locator('#stage').boundingBox();
   for (let i = 0; i < 4; i++){
-    const sx = box.x + box.width/2, sy = box.y + box.height*0.88;
+    const sx = box.x + box.width/2, sy = box.y + box.height*0.78;
     await page.mouse.move(sx, sy); await page.mouse.down(); await page.mouse.move(sx + (i-1.5)*20, sy + 120, { steps: 4 }); await page.mouse.up();
     await page.waitForFunction(() => !document.getElementById('result').hidden, null, { timeout: 20000 });
     await page.locator('#btnNext').click(); await page.waitForTimeout(50);
