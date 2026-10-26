@@ -1,6 +1,6 @@
 // ---------- Bowling ----------
 function makeBowling(){
-  let pins, knocked, trail, putts, done, log, gutter;
+  let pins, knocked, trail, putts, done, log, gutter, onLane;
   const SP = () => 0.42*K, PIN_R = () => 0.13*K, HIT = () => 0.13*K + BALL_R;
   const PIN_HIT = () => 0.55*SP(), REACH = () => 2.4*SP(), PIN_V = () => 4*K;   // pin-to-pin contact distance, how far a full-speed pin flies, how fast pins fly on screen
   const LB = () => 1.75*K, GUT = () => 0.2*K, headY = () => D*0.42;
@@ -39,12 +39,12 @@ function makeBowling(){
     how:'Ten projected pins at the far end of a lane. Pins fall where the ball’s path crosses them and can take neighbors down. Knocked pins are cleared between putts.',
     rule:() => 'Putts to finish: your score is the putts it takes to knock down all ten pins, so a strike is a hole in one. After 4 putts you pick up and take 5.',
     hole:() => ({par:SIM.bowlPar, list:[{who:'', strokes:strokes()}], final:!!done}),
-    start(){ rack(); putts=0; done=null; log=[]; knocked=0; trail=[]; gutter=false; },
+    start(){ rack(); putts=0; done=null; log=[]; knocked=0; trail=[]; gutter=false; onLane=false; },
     status(){ return done ? 'Hole complete' : `Putt ${putts+1} of ${MAX_PUTTS} · ${plural(standing(),'pin')} standing`; },
     /*SIM*/autoPutt(){   // the pocket beside the head pin on a full rack, otherwise straight at the nearest standing pin
       const st = pins.filter(p=>!p.down && !p.gone), f = st.reduce((a,p) => p.y > a.y ? p : a);
       return puttTo(f.x + (st.length === 10 ? 0.24*SP() : 0), f.y, 1.5*K); },/*/SIM*/
-    onShotStart(){ knocked=0; trail=[]; gutter=false; },
+    onShotStart(){ knocked=0; trail=[]; gutter=false; onLane=false; },
     onSample(s, prev){
       trail.push(s); if (!prev || gutter) return;
       const dx=s.x-prev.x, dy=s.y-prev.y, L=Math.hypot(dx,dy); if (L<1e-6) return;
@@ -57,7 +57,8 @@ function makeBowling(){
         const t=Math.max(0,t0); let nx=p.x-(prev.x+bx*t), ny=p.y-(prev.y+by*t); const nl=Math.hypot(nx,ny)||1; nx/=nl; ny/=nl;
         topple(p, nx, ny, v*(0.35+0.65*Math.max(0, nx*bx+ny*by)), 0, 0);
       }
-      if (Math.abs(s.x-W/2) > LB()/2) gutter=true;   // the ball's center crossed the lane edge: nothing counts after this
+      // the tee box is wider than the lane, so a ball may come onto it from the side; once on, leaving it is the gutter and nothing counts after
+      if (Math.abs(s.x-W/2) <= LB()/2) onLane=true; else if (onLane) gutter=true;
     },
     drawSheet(){
       const t=state.clock, lb=LB(), g=GUT(), lx=W/2-lb/2, hy=headY();
@@ -109,7 +110,7 @@ function makeBowling(){
       return `<table class="sc"><thead><tr><th>Putt</th><th class="num">Knocked</th><th class="num">Standing</th></tr></thead><tbody>${r}</tbody><tfoot><tr><td colspan="2">Strokes</td><td class="num">${strokes()}</td></tr></tfoot></table>`;
     },
     notes(){ return li([
-      `Reads <b>the ball’s path</b>. A pin falls when the path passes within ${(HIT()*12).toFixed(1)} in of its center, the same ratio a bowling ball has to real pins. A ball whose center crosses the lane edge is in the gutter and knocks nothing down after that.`,
+      `Reads <b>the ball’s path</b>. A pin falls when the path passes within ${(HIT()*12).toFixed(1)} in of its center, the same ratio a bowling ball has to real pins. The tee box is wider than the lane, so the ball may come onto the lane from the side; once its center has been on the lane and crosses an edge, it is in the gutter and knocks nothing down after that.`,
       `Falling pins collide like real pins: a struck pin flies off along the line between the centers, knocks over what it meets and bounces off the lane edges. There is no randomness, so the same path always leaves the same pins. As in bowling, a ball about ${(0.24*SP()*12).toFixed(1)} in to either side of the head pin (the pocket) strikes far more often than a dead-center hit, and a firm putt carries more pins than a slow one.`,
       `<b>Putts-to-finish scoring</b> turns bowling into golf: a strike is an ace and a spare is a 2. In simulation at the default rig settings, an office-average putter averages ${SIM.bowlAvg} strokes and strikes ${SIM.bowlStrike}% of the time, which sets par at ${SIM.bowlPar}.`,
       'Pins drop when the camera reports the hit. With 250 ms of lag the ball is visibly past the rack before anything falls, which looks broken to players. Aim for under 100 ms.',
