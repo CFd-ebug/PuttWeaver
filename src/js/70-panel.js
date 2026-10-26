@@ -12,7 +12,7 @@ function refreshPanel(){
   document.querySelectorAll('.chip').forEach((c,i) => c.setAttribute('aria-pressed', String(i===gameIdx)));
 }
 function showResult(r){
-  lastResult = r;
+  lastResult = r; FLOW.resultAt = state.clock;                  // the Host's "Reset ball" banner waits a few seconds after this (97-flow.js)
   const el=$('result'); el.hidden=false; el.dataset.tone=r.tone||'';
   $('rEyebrow').textContent='Last shot'; $('rTitle').textContent=r.title; $('rDetail').textContent=r.detail||''; $('btnNext').textContent='Continue';
   $('rRate').hidden = true;

@@ -3,6 +3,7 @@
 // Accept: text/event-stream for streaming), fills in {".sv":"timestamp"}, and enforces the same permission and
 // validation rules as docs/console-plan.md (ids of the right length, no listing, no unknown keys).
 //   const fake = await startFake();   fake.url   fake.db   fake.requests   fake.kick()   fake.setOffline(true)   fake.skew = 5000
+//   fake.refuse = ['shots', 'stats']   refuse writes to those room keys, like database rules from before they existed (null again to allow)
 const http = require('http');
 
 const ROOM_KEYS = new Set(['state', 'cmd', 'ack', 'hb', 'want', 'preview', 'shots', 'stats']);
@@ -103,6 +104,7 @@ async function startFake(opts = {}) {
         if (!why) for (const k in val) { why = allowed(parts.concat(k), true, val[k]) || (parts.length < 2 ? 'no access' : null); if (why) break; }
       } else if (req.method === 'POST') why = allowed(parts, false) || allowed(parts.concat('x'), true, val);
       else why = allowed(parts, write, val);
+      if (!why && write && fake.refuse && parts[0] === 'rooms' && fake.refuse.includes(parts[2])) why = 'older rules do not accept ' + parts[2];     // fake.refuse = ['shots', 'stats'] acts like database rules from before those were added
       if (why) return deny(why);
       res.writeHead(200, { 'Content-Type': 'application/json' });
       if (req.method === 'GET') { res.end(JSON.stringify(get(parts))); return; }

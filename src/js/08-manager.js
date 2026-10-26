@@ -108,7 +108,7 @@ function runManager(){
     if (asking(st.phase) && (st.phase === 'select' ? lastPhase !== 'select' : !asking(lastPhase)) && el('mgrPick').hidden) pickShow();   // the projector shows the results or asks: open the picker at once
     else if (!asking(st.phase) && asking(lastPhase) && !el('mgrPick').hidden) pickClose();                   // a game was chosen somewhere else
     lastPhase = st.phase || '';
-    renderPlay(st); renderStat(); renderUse(st);
+    renderPlay(st); renderStat(); renderUse(st); renderSave(st);
     const l = st.live || {}, tb = el('mgrTrackBtn');
     tb.textContent = l.on ? 'Pause tracking' : 'Start tracking'; tb.setAttribute('aria-pressed', String(!!l.on)); tb.disabled = !l.src || !l.cal;
     el('mgrHoldBtn').setAttribute('aria-pressed', String(!!st.hold)); el('mgrHoldBtn').textContent = st.hold ? 'Resume game' : 'Hold screen';
@@ -357,14 +357,14 @@ function runManager(){
 
 
   // ---------- Setup: players' screen, statistics, usage ----------
-  const psHold = {results: 0, banner: 0}, psVal = {}, psTimer = {};
+  const psHold = {results: 0, banner: 0, feedback: 0}, psVal = {}, psTimer = {};
   function renderPlay(st){
-    const get = k => Date.now() < psHold[k] ? psVal[k] : st[k], rs = get('results'), bn = get('banner');
-    say('mgrResultsV', rs == null ? '…' : rs ? rs + ' s' : 'Skipped'); say('mgrBannerV', bn == null ? '…' : bn ? bn + ' s' : 'Off');
+    const get = k => Date.now() < psHold[k] ? psVal[k] : st[k], rs = get('results'), bn = get('banner'), fb = get('feedback');
+    say('mgrResultsV', rs == null ? '…' : rs ? rs + ' s' : 'Skipped'); say('mgrBannerV', bn == null ? '…' : bn ? bn + ' s' : 'Off'); say('mgrFeedbackV', fb == null ? '…' : fb ? fb + ' s' : 'At once');
   }
   function stepPlay(k, d){
     const st = lastState || {}, cur = Date.now() < psHold[k] ? psVal[k] : st[k]; if (cur == null) return;
-    const v = Math.min(k === 'results' ? 60 : 30, Math.max(0, cur + d)); psVal[k] = v; psHold[k] = Date.now() + 2500; renderPlay(st);
+    const v = Math.min(k === 'results' ? 60 : k === 'feedback' ? 15 : 30, Math.max(0, cur + d)); psVal[k] = v; psHold[k] = Date.now() + 2500; renderPlay(st);
     clearTimeout(psTimer[k]); psTimer[k] = setTimeout(() => send('cfg', {[k]: v}), 400);          // the last tap wins
   }
   function renderStat(){
@@ -381,6 +381,11 @@ function runManager(){
     say('mgrUseTxt', 'About ' + fmtB(down) + ' of the 10 GB of downloads the free plan allows this month (' + own.m + '). Counted: ' + (h ? 'the Host and this console.' : 'this console only; the Host has not reported yet.') + ' Other consoles are not counted, so check Usage in the Firebase console before a big event.');
     el('mgrUseWarn').hidden = !hot; el('mgrUseStrip').hidden = !hot;
     if (hot){ say('mgrUseWarn', 'More than ' + useWarnAt + '% of this month’s free downloads are used. Close the Setup and Debug tabs when you are not using them (they stream camera pictures), keep the number of open consoles low, and check the Firebase console.'); say('mgrUseStrip', 'Firebase usage ' + Math.round(pct) + '%'); }
+  }
+  // The Host says when the database refuses the shot replays or the statistics (usually old database rules, see docs/console-plan.md)
+  function renderSave(st){
+    const bad = st && st.save, box = el('mgrSaveStrip'); box.hidden = !bad;
+    if (bad) say('mgrSaveStrip', 'Replays or statistics are not being saved: ' + String(bad).slice(0, 110));
   }
   function statSure(on){ el('mgrStatSure').hidden = !on; el('mgrStatBtns').hidden = on; if (on) say('mgrStatSureD', 'This removes the scores, the comparisons and the shot replays for every game. It cannot be undone.'); }
   async function statReset(){

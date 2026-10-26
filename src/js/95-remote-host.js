@@ -43,6 +43,7 @@ const REMOTE_CMDS = {
   hover(a){ const i = Number(a && a.idx); FLOW.hover = i >= 0 && i < GAMES.length ? i : -1; FLOW.hoverAt = state.clock; },
   cfg(a){                                                                    // settings for what the players see
     if (a && a.banner != null){ const v = Number(a.banner); if (!isFinite(v)) throw new Error('Not a number'); FLOW.bannerSecs = clamp(Math.round(v), 0, 30); flowSave(); }
+    if (a && a.feedback != null){ const v = Number(a.feedback); if (!isFinite(v)) throw new Error('Not a number'); FLOW.feedbackSecs = clamp(Math.round(v), 0, 15); flowSave(); }
     if (a && a.results != null){ const v = Number(a.results); if (!isFinite(v)) throw new Error('Not a number'); FLOW.resultsSecs = clamp(Math.round(v), 0, 60); flowSave(); }
   },
   restart(){ startGame(); if (LIVE.on) armReady(); },
@@ -163,7 +164,7 @@ function remoteSnapshot(){
     games: GAMES.map(g => g.name),
     gids: GAMES.map(g => g.id),
     phase: FLOW.phase,                       // 'play'; 'results' while the hole's results show; 'select' while the projector asks the players to pick the next game
-    banner: FLOW.bannerSecs, results: FLOW.resultsSecs,
+    banner: FLOW.bannerSecs, results: FLOW.resultsSecs, feedback: FLOW.feedbackSecs,
     pj: flowLabel(),                         // what the projector shows, for the controller's status chip
     shown: GAMES.map((g, i) => shownIds.includes(g.id) ? i : -1).filter(i => i >= 0),
     hint: $('hint').textContent,
@@ -172,6 +173,7 @@ function remoteSnapshot(){
     live: {src: LIVE.src || '', on: !!LIVE.on, state: LIVE.on ? LIVE.state : 'off', cal: !!LIVE.Hcs, fps: Math.round(LIVE.camFps || 0), ms: Math.round(LIVE.procMs || 0)},
     ball: remoteBall(),
     use: remoteUse(),                             // this device's own relay traffic this month, in 256 KB steps (see 07-relay.js)
+    save: saveProblem() || undefined,             // set when the database refuses the shot replays or the statistics (96-remote-shots.js)
     sr: [SHOTS.rev, statsRev],                    // changes when new shots or totals are in the database (96-remote-shots.js)
     setup: remoteWants() ? remoteSetup() : undefined,
     debug: remoteWantsDebug() ? remoteDebug() : undefined

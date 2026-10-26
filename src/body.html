@@ -27,6 +27,7 @@
         <span class="mono" id="mgrTrack"></span>
         <span class="mono" id="mgrVer"></span>
         <span class="mgr-warn" id="mgrUseStrip" hidden></span>
+        <span class="mgr-warn" id="mgrSaveStrip" hidden></span>
         <button class="btn key small" id="mgrFull" type="button" hidden>Full screen</button>
       </div>
       <nav class="mgr-tabs" role="tablist" aria-label="Console sections">
@@ -86,6 +87,8 @@
             <div class="ps-step" role="group" aria-label="Results screen length"><button class="btn key small" data-step="results,-5" type="button" aria-label="Shorter">−</button><output class="mono" id="mgrResultsV">…</output><button class="btn key small" data-step="results,5" type="button" aria-label="Longer">+</button></div></div>
           <div class="ps-row"><div class="ps-txt"><b>Putt now banner</b><span>How long it stays on the sheet once the round is ready. 0 switches it off.</span></div>
             <div class="ps-step" role="group" aria-label="Putt now banner length"><button class="btn key small" data-step="banner,-1" type="button" aria-label="Shorter">−</button><output class="mono" id="mgrBannerV">…</output><button class="btn key small" data-step="banner,1" type="button" aria-label="Longer">+</button></div></div>
+          <div class="ps-row"><div class="ps-txt"><b>Result before Reset ball</b><span>How long the players read how their putt went before the sheet asks them to reset the ball. 0 asks at once.</span></div>
+            <div class="ps-step" role="group" aria-label="Result time before the reset banner"><button class="btn key small" data-step="feedback,-1" type="button" aria-label="Shorter">−</button><output class="mono" id="mgrFeedbackV">…</output><button class="btn key small" data-step="feedback,1" type="button" aria-label="Longer">+</button></div></div>
         </div>
         <div class="card ps-card" id="mgrStatCard">
           <div class="eyebrow">Play statistics</div>

@@ -43,12 +43,13 @@ function drawProjAim(a){
   ctx.save(); ctx.setLineDash([0.06*K,0.05*K]); ctx.lineWidth=0.025*K; ctx.strokeStyle='rgba(20,30,64,0.8)'; seg(ex, ey, ex+ux*L, ey+uy*L); ctx.stroke(); ctx.restore();
   pill(`${Math.round(a.frac*100)}%`, ex+(ux>0?-0.35:0.35)*K, ey-0.25*K, 0.09*K, '#2343d6', '#fff', {font:'mono', weight:500});
 }
-function drawToast(r){
-  const y = 0.32*K;
-  const w = Math.min(W*0.8, tw(r.title, 0.14*K, {font:'display'}) + 0.8*K), x = W/2 - w/2;
-  rrect(x, y-0.2*K, w, 0.56*K, 0.1*K); ctx.fillStyle='rgba(16,22,46,0.9)'; ctx.fill();
-  txt(r.title, W/2, y, 0.14*K, {font:'display', color: r.tone==='good' ? '#9ff0cf' : r.tone==='bad' ? '#ffb3aa' : '#ffffff', maxW:w-0.3*K});
-  txt(LIVE.on ? 'Pick up your ball. The next round starts when the sheet is clear.' : 'Enter or tap for the next shot', W/2, y+0.22*K, 0.065*K, {weight:400, color:'#c8d2ee', maxW:w-0.3*K});
+function drawToast(r){                              // the result of the putt, at the top of the sheet
+  const v = r.verdict ? r.verdict.toUpperCase() : '', vh = v ? 0.2*K : 0, y = 0.32*K + vh, col = r.tone==='good' ? '#9fb3ff' : r.tone==='bad' ? '#ffb3aa' : '#ffffff';
+  const w = Math.min(W*0.8, Math.max(tw(r.title, 0.14*K, {font:'display'}), v ? tw(v, 0.08*K, {font:'display', ls:.12}) : 0) + 0.8*K), x = W/2 - w/2;
+  rrect(x, y-0.2*K-vh, w, 0.56*K+vh, 0.1*K); ctx.fillStyle='rgba(16,22,46,0.9)'; ctx.fill();
+  if (v) txt(v, W/2, y-0.2*K-vh+0.2*K, 0.08*K, {font:'display', color:col, ls:.12, maxW:w-0.3*K});
+  txt(r.title, W/2, y, 0.14*K, {font:'display', color: v ? '#ffffff' : col, maxW:w-0.3*K});
+  txt(LIVE.on ? (r.detail || '') : 'Enter or tap for the next shot', W/2, y+0.22*K, 0.065*K, {weight:400, color:'#c8d2ee', maxW:w-0.3*K});     // while tracking, the "Reset ball" banner follows after a few seconds
 }
 function drawTestCard(){
   ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,W,D);
@@ -116,8 +117,8 @@ function drawProj(){
   if (REMOTE.hold){ drawHold(); ctx.restore(); return; }       // the console is holding the screen (95-remote-host.js)
   ctx.fillStyle='#f8f8f5'; ctx.fillRect(0,0,W,D);
   if (FLOW.phase !== 'play'){ ctx.save(); if (FLOW.phase === 'results') flowDrawResults(); else flowDrawSelect(); ctx.restore(); setWorld(); drawLiveOverlay(); ctx.restore(); return; }     // between games the players pick the next one (97-flow.js)
+  if (SHOTS.snap) snapCleanSheet();
   ctx.save(); game.drawSheet(); ctx.restore(); setWorld();
-  if (SHOTS.snap) remoteSnapSheet();
   if (S.washed){ ctx.fillStyle='rgba(238,238,230,0.38)'; ctx.fillRect(0,0,W,D); }
   if (mode==='over' && overInfo){
     const bh=D*0.36; ctx.fillStyle='rgba(16,22,46,0.88)'; ctx.fillRect(0,D/2-bh/2,W,bh);
@@ -159,9 +160,9 @@ function draw(){
   }
   ctx.fillStyle='#f8f8f5'; ctx.fillRect(0,0,W,D);
   ctx.save(); ctx.beginPath(); ctx.rect(0,0,W,D); ctx.clip();
+  if (SHOTS.snap) snapCleanSheet();
   ctx.save(); game.drawSheet(); ctx.restore();
   setWorld();
-  if (SHOTS.snap) remoteSnapSheet();
   if (S.washed){ ctx.fillStyle='rgba(238,238,230,0.38)'; ctx.fillRect(0,0,W,D); }
   if (mode==='over' && overInfo){
     const bh=D*0.36; ctx.fillStyle='rgba(16,22,46,0.88)'; ctx.fillRect(0,D/2-bh/2,W,bh);

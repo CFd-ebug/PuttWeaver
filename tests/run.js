@@ -15,6 +15,7 @@ const suite = [
   { name: 'console: pairing, status, commands, reconnect', file: 'console-check.js', timeout: 240, ok: [NO_ERRORS] },
   { name: 'console: dashboard, shot replays, play statistics', file: 'dashboard-check.js', timeout: 240, ok: [NO_ERRORS] },
   { name: 'console: game picker and games shown', file: 'picker-check.js', timeout: 240, ok: [NO_ERRORS] },
+  { name: 'console: refused shot saves are reported', file: 'save-check.js', timeout: 240, ok: [NO_ERRORS] },
   { name: 'projector: banners and Pick your game', file: 'flow-check.js', timeout: 240, ok: [NO_ERRORS] },
   { name: 'results screen, Setup cards, statistics reset, usage', file: 'results-check.js', timeout: 300, ok: [NO_ERRORS] },
   { name: 'console: Setup tab with the simulated camera', file: 'console-setup-check.js', timeout: 400, ok: [NO_ERRORS] },

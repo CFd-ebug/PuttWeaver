@@ -160,6 +160,14 @@ async function relaySelfTest(onStep){
     if (!back || back.room !== room) throw new Error('Read back ' + JSON.stringify(back));
     await relayDelete('pair/' + code);
   });
+  if (ok) ok = await step('Save a shot replay and statistics', async () => {
+    try {
+      await relayPut(base + '/shots/1', {n: 1, title: 'Self-test', img: 'x'});
+      const sh = await relayGet(base + '/shots/1'); if (!sh || sh.n !== 1) throw new Error('Read back ' + JSON.stringify(sh));
+      await relayPut(base + '/stats', {n: 0});
+      const st = await relayGet(base + '/stats'); if (!st || st.n !== 0) throw new Error('Read back ' + JSON.stringify(st));
+    } catch (e) { throw new Error(String(e.message || e) + ' · the shot replays need the newer database rules (docs/console-plan.md)'); }
+  });
   if (ok) ok = await step('Rules block listing and junk', async () => {
     let listed = false; try { await relayGet('rooms'); listed = true; } catch (e) {}
     if (listed) throw new Error('rooms can be listed: the database rules are too open');

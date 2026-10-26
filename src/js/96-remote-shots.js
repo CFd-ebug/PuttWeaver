@@ -3,22 +3,30 @@
 //   rooms/<room>/shots/<n>   the shots of the hole being played: result, ball path, target, and a picture of the projected sheet
 //   rooms/<room>/stats       running totals shared by every hole played on this rig (see STATS below)
 // The Host is the only writer, so the totals are kept in memory here and written back whole; a console command resets them.
-const SHOTS = {n: 0, rec: null, snap: false, timer: 0, rev: 0};     // rev and statsRev go into the published state, so a Manager knows when to fetch
+const SHOTS = {n: 0, rec: null, snap: false, clean: false, timer: 0, rev: 0};     // rev and statsRev go into the published state, so a Manager knows when to fetch
 let statsRev = 0;
 const STATS_EMPTY = () => ({n: 0, holes: {}, places: {}});
 // n: holes played; holes[gameId][strokes]: how many holes ended with that score; places[key]: {name, x, y, n, close, ksum, nk}
 // where x and y are fractions of the sheet, n tries, close how many were close, ksum/nk the km miss total and how many had a reading.
 let STATS = STATS_EMPTY(), statsReady = null, statsTimer = 0;
+// When the database refuses a write the Host keeps playing, but says so: in its log and in the state, so the console can show it.
+const SAVE_ERR = {shots: '', stats: ''};
+const saveProblem = () => SAVE_ERR.shots || SAVE_ERR.stats;
+function saveFail(kind, e){
+  const m = (kind === 'shots' ? 'shot replays' : 'statistics') + ': ' + String((e && e.message) || e || 'unknown error');
+  if (SAVE_ERR[kind] !== m){ SAVE_ERR[kind] = m; llog('The database did not accept the ' + m + '. Check the database rules (docs/console-plan.md).'); REMOTE.key = ''; }
+}
+function saveOk(kind){ if (SAVE_ERR[kind]){ SAVE_ERR[kind] = ''; llog('The database accepts the ' + (kind === 'shots' ? 'shot replays' : 'statistics') + ' again.'); REMOTE.key = ''; } }
 const statsBase = () => 'rooms/' + REMOTE.room + '/';
 const remoteCounts = () => ROLE === 'host' && REMOTE.on && REMOTE.sync;
 
 function statsLoad(){
-  if (!statsReady) statsReady = relayGet(statsBase() + 'stats').then(v => { STATS = Object.assign(STATS_EMPTY(), v || {}); STATS.holes = STATS.holes || {}; STATS.places = STATS.places || {}; }).catch(() => { statsReady = null; });
+  if (!statsReady) statsReady = relayGet(statsBase() + 'stats').then(v => { STATS = Object.assign(STATS_EMPTY(), v || {}); STATS.holes = STATS.holes || {}; STATS.places = STATS.places || {}; }).catch(e => { statsReady = null; saveFail('stats', e); });
   return statsReady;
 }
 function statsSave(){
   clearTimeout(statsTimer);
-  statsTimer = setTimeout(() => { if (remoteCounts()) relayPut(statsBase() + 'stats', STATS).then(() => { statsRev++; REMOTE.key = ''; }).catch(() => {}); }, 1500);
+  statsTimer = setTimeout(() => { if (remoteCounts()) relayPut(statsBase() + 'stats', STATS).then(() => { saveOk('stats'); statsRev++; REMOTE.key = ''; }).catch(e => saveFail('stats', e)); }, 1500);
 }
 async function remoteStatsReset(){
   clearTimeout(statsTimer); STATS = STATS_EMPTY(); statsReady = Promise.resolve();
@@ -40,7 +48,7 @@ function remoteShotDone(r){
   const step = Math.max(1, Math.ceil(ds.length / 60)), path = [];
   for (let i = 0; i < ds.length; i += step) path.push([r3(ds[i].x), r3(ds[i].y), Math.round((ds[i].t - t0) * 1000)]);
   if (ds.length && (ds.length - 1) % step) { const l = ds[ds.length - 1]; path.push([r3(l.x), r3(l.y), Math.round((l.t - t0) * 1000)]); }
-  const rec = {n: ++SHOTS.n, game: game.id, title: r.title || '', detail: r.detail || '', tone: r.tone || '', path, rest: shot.rest ? [r3(shot.rest.x), r3(shot.rest.y)] : null, sw: W, sd: D};
+  const rec = {n: ++SHOTS.n, game: game.id, title: r.title || '', verdict: r.verdict || '', detail: r.detail || '', tone: r.tone || '', path, rest: shot.rest ? [r3(shot.rest.x), r3(shot.rest.y)] : null, sw: W, sd: D};
   if (info){
     rec.tgt = {x: r3(info.x), y: r3(info.y), r: r3(info.r), name: info.name}; rec.hit = !!info.hit;
     if (info.off != null) rec.off = Math.round(info.off * 10) / 10;
@@ -61,6 +69,14 @@ function sheetPicture(w, q0, max){           // the sheet as the projector shows
   let q = q0, url = ''; for (;;){ url = c.toDataURL('image/jpeg', q); if (url.length < max || q <= 0.3) break; q -= 0.1; }
   return url;
 }
+// The picture for the console and the results screen is drawn on its own, before the real frame, without the quip that the games write
+// over the sheet for the players (SHOTS.clean): it covers the place name, the target and the path that the replay is about.
+function snapCleanSheet(){
+  SHOTS.clean = true; ctx.save();
+  try { game.drawSheet(); } finally { ctx.restore(); SHOTS.clean = false; }
+  setWorld(); remoteSnapSheet();
+  ctx.fillStyle = '#f8f8f5'; ctx.fillRect(0, 0, W, D);
+}
 function remoteSnapSheet(){
   SHOTS.snap = false;
   try { remoteShotSend(sheetPicture(480, 0.6, 45000)); } catch (e) { remoteShotSend(null); }
@@ -69,7 +85,7 @@ function remoteShotSend(img){
   const rec = SHOTS.rec; if (!rec || rec.sent) return; rec.sent = true; clearTimeout(SHOTS.timer); SHOTS.snap = false;
   const out = Object.assign({}, rec); delete out.sent; if (img && img.length < 60000) out.img = img;
   flowKeepShot(out);
-  relayPut(statsBase() + 'shots/' + rec.n, out).then(() => { SHOTS.rev++; REMOTE.key = ''; }).catch(() => {});
+  relayPut(statsBase() + 'shots/' + rec.n, out).then(() => { saveOk('shots'); SHOTS.rev++; REMOTE.key = ''; }).catch(e => saveFail('shots', e));
 }
 
 // ---------- a hole is finished ----------

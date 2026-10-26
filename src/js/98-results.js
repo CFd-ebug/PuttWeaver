@@ -10,7 +10,7 @@ function flowHoleDone(){                                    // called when the l
   if (remoteCounts()) statsLoad().then(() => { r.dist = Object.assign({}, STATS.holes[r.id] || {}); });      // after remoteHoleDone has counted this hole
 }
 function flowKeepShot(rec){                                  // a putt of this hole, with the picture of the sheet it was played on
-  const s = {n: rec.n, title: rec.title, tone: rec.tone, path: rec.path || [], rest: rec.rest, sw: rec.sw || W, sd: rec.sd || D, im: null};
+  const s = {n: rec.n, title: rec.title, verdict: rec.verdict || '', tone: rec.tone, path: rec.path || [], rest: rec.rest, sw: rec.sw || W, sd: rec.sd || D, im: null};
   if (rec.img){ s.im = new Image(); s.im.src = rec.img; }
   FLOW.shots = FLOW.shots.filter(x => x.n !== s.n).concat(s).slice(-4);
 }
@@ -60,7 +60,7 @@ function flowDrawResults(){
   const shots = FLOW.shots, n = shots.length, rx = 980, rw = 884;
   txt('YOUR PUTTS', rx, 104, 32, '#0a0a0a', {mono: true});
   if (n){
-    const cols = n <= 1 ? 1 : 2, gx = 28, gy = 36, pw = (rw - gx * (cols - 1)) / cols, ph = pw * D / W, th = ph + 62, rows = Math.ceil(n / cols), gh = rows * th + (rows - 1) * gy, y0 = 150 + (860 - gh) / 2;
+    const cols = n <= 1 ? 1 : 2, gx = 28, gy = 36, pw = (rw - gx * (cols - 1)) / cols, ph = pw * D / W, th = ph + 116, rows = Math.ceil(n / cols), gh = rows * th + (rows - 1) * gy, y0 = 150 + (860 - gh) / 2;
     shots.forEach((sh, i) => flowDrawReplay(sh, i, rx + (i % cols) * (pw + gx), y0 + Math.floor(i / cols) * (th + gy), pw, ph, t));
   }
   // ---- footer: what happens next ----
@@ -90,6 +90,16 @@ function flowDrawReplay(sh, i, x, y, w, h, t){
   ctx.lineWidth = 3; ctx.strokeStyle = '#0a0a0a'; ctx.strokeRect(x + 1.5, y + 1.5, w - 3, h - 3);
   const col = sh.tone === 'good' ? '#1a3cff' : sh.tone === 'bad' ? '#e5002b' : '#0a0a0a';
   ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
-  ctx.font = `600 24px "IBM Plex Mono", monospace`; ctx.fillStyle = '#0a0a0a'; ctx.fillText('PUTT ' + String(sh.n).padStart(2, '0'), x, y + h + 30);
-  ctx.font = htFont(28, 800); ctx.fillStyle = col; ctx.textAlign = 'right'; ctx.fillText((sh.title || '').slice(0, 24), x + w, y + h + 32);
+  ctx.font = `600 24px "IBM Plex Mono", monospace`; ctx.fillStyle = '#0a0a0a'; ctx.fillText('PUTT ' + String(sh.n).padStart(2, '0'), x, y + h + 32);
+  if (sh.verdict){ ctx.font = `600 22px "IBM Plex Mono", monospace`; ctx.fillStyle = col; ctx.textAlign = 'right'; ctx.fillText(sh.verdict.toUpperCase(), x + w, y + h + 32); }
+  // the quip gets lines of its own, so it never runs into the label above it: one line if it fits at a readable size, otherwise two
+  const qt = sh.title || ''; let size = 30; ctx.textAlign = 'left'; ctx.fillStyle = '#0a0a0a'; ctx.font = htFont(size, 800);
+  while (size > 24 && ctx.measureText(qt).width > w){ size -= 1; ctx.font = htFont(size, 800); }
+  let lines = [qt];
+  if (ctx.measureText(qt).width > w){
+    const words = qt.split(' '); let best = 1e9;
+    for (let i = 1; i < words.length; i++){ const a1 = words.slice(0, i).join(' '), b1 = words.slice(i).join(' '), m = Math.max(ctx.measureText(a1).width, ctx.measureText(b1).width); if (m < best){ best = m; lines = [a1, b1]; } }
+    while (lines.length === 2 && size > 18 && Math.max(ctx.measureText(lines[0]).width, ctx.measureText(lines[1]).width) > w){ size -= 1; ctx.font = htFont(size, 800); }
+  }
+  lines.forEach((l, i) => ctx.fillText(l, x, y + h + 74 + i * (size + 6)));
 }

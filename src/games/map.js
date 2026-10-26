@@ -40,7 +40,7 @@ function makeMap(){
       banner(bx,by,bw,bh);
       const prog = `${num}/${N} · SCORE ${score()}`;
       const tier = PLACE_TIERS[c.tier], lab = tier.label.toUpperCase();
-      if (last && last.quip) pill(last.quip, bx+bw/2, by-0.15*K, 0.1*K, last.hit ? '#2343d6' : '#141a2e', '#fff');   // the players read the quip on the sheet
+      if (last && last.quip && !SHOTS.clean) pill(last.quip, bx+bw/2, by-0.15*K, 0.1*K, last.hit ? '#2343d6' : '#141a2e', '#fff');   // the players read the quip on the sheet
       if (tw(lab, 0.07*K, {font:'display', ls:.12}) + tw(prog, 0.07*K, {font:'mono', weight:500}) + 0.4*K < bw)
         txt(lab, bx+0.14*K, by+bh*0.24, 0.07*K, {font:'display', align:'left', color:tier.color, ls:.12});
       txt(prog, bx+bw-0.14*K, by+bh*0.24, 0.07*K, {font:'mono', weight:500, align:'right', color:'#9fb3ff'});
@@ -58,16 +58,17 @@ function makeMap(){
     },
     onRest(p, why){
       const c = cur(), tx=lonX(c.lon), ty=latY(c.lat);
-      if (!p){ rows.push({name:c.name, km:null, hit:false}); last={p:null, hit:false, quip: why === 'short' ? '' : quip('gone')}; return {title: last.quip || 'No reading', detail:`${WHY[why]} No stroke off. Score stays ${score()}.`, tone:'bad'}; }
+      if (!p){ rows.push({name:c.name, km:null, hit:false}); last={p:null, hit:false, quip: why === 'short' ? '' : quip('gone')}; return {title: last.quip || 'No reading', verdict:'No reading', detail:`${WHY[why]} No stroke off. Score stays ${score()}.`, tone:'bad'}; }
       const lat=yLat(p.y), lon=xLon(p.x), km=hav(lat,lon,c.lat,c.lon);
       const missIn = Math.hypot(p.x-tx, p.y-ty)*12, hit = missIn <= zoneIn();
       if (hit) hits++;
       const z = zoneIn(), own = MAP_PLACE_QUIPS[c.name], title = own ? (hit ? own.hit : own.miss)
         : quip(hit ? 'hit' : missIn <= 1.5*z ? 'near' : missIn <= 2.5*z ? 'region' : missIn <= 4*z ? 'far' : 'world');   // bands scale with the close zone, like the scoring
       rows.push({name:c.name, km, hit}); last={p, km, hit, quip:title};
+      const verdict = hit ? 'Close · −1 stroke' : missIn <= 1.5*z ? 'Almost close' : 'Not close';
       return hit
-        ? {title, detail:`Close: −1 stroke. ${fmt(km)} km from ${c.name}, ${missIn.toFixed(1)} in from the spot. Score now ${score()}.`, tone:'good'}
-        : {title, detail:`${fmt(km)} km off, ${missIn.toFixed(1)} in from the spot; it needed to stop within ${zoneIn()} in. Score stays ${score()}.`, tone:'bad'};
+        ? {title, verdict, detail:`Close: −1 stroke. ${fmt(km)} km from ${c.name}, ${missIn.toFixed(1)} in from the spot. Score now ${score()}.`, tone:'good'}
+        : {title, verdict, detail:`${fmt(km)} km off, ${missIn.toFixed(1)} in from the spot; it needed to stop within ${zoneIn()} in. Score stays ${score()}.`, tone:'bad'};
     },
     shotInfo(){        // for the console: what the target was and how the last ball did (optional hook for any game)
       if (!last) return null;

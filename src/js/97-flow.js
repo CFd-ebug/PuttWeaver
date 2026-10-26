@@ -3,11 +3,13 @@
 // that is answered on the controller (the Manager console). The drawing is shared with the console (08-howto.js, 08-gamepick.js).
 //   1 BALL AT START  the round is being set up (the empty-sheet photo); chevrons point down to where the ball goes (the tee, off the sheet)
 //   2 PUTT NOW       ready; slightly see-through and gone after FLOW.bannerSecs, because it is the one banner that covers the game
-//   3 RESET BALL     the result is showing and the ball is still on the sheet; a dotted route leads back to the start
+//   3 RESET BALL     the result is showing and the ball is still on the sheet; a dotted route leads back to the start. It waits
+//                    FLOW.feedbackSecs after the result so the players can read how the putt went (the toast at the top of the sheet)
+//                    before being told to pick the ball up.
 // Players never see any of this on an Evaluator, and without a paired controller the games simply restart as before.
 const FLOW_KEY = 'putt-lab-flow';
-const FLOW = {phase: 'play', hover: -1, hoverAt: 0, t0: 0, b3off: false, bannerSecs: 5, resultsSecs: 15, queued: -1, res: null, shots: [], imgs: {}, lost: 0};
-try { const c = JSON.parse(localStorage.getItem(FLOW_KEY) || '{}'); if (isFinite(c.bannerSecs)) FLOW.bannerSecs = clamp(+c.bannerSecs, 0, 30); if (isFinite(c.resultsSecs)) FLOW.resultsSecs = clamp(+c.resultsSecs, 0, 60); } catch (e) {}
+const FLOW = {phase: 'play', hover: -1, hoverAt: 0, t0: 0, b3off: false, bannerSecs: 5, resultsSecs: 15, feedbackSecs: 4, resultAt: -1e9, queued: -1, res: null, shots: [], imgs: {}, lost: 0};
+try { const c = JSON.parse(localStorage.getItem(FLOW_KEY) || '{}'); if (isFinite(c.bannerSecs)) FLOW.bannerSecs = clamp(+c.bannerSecs, 0, 30); if (isFinite(c.resultsSecs)) FLOW.resultsSecs = clamp(+c.resultsSecs, 0, 60); if (isFinite(c.feedbackSecs)) FLOW.feedbackSecs = clamp(+c.feedbackSecs, 0, 15); } catch (e) {}
 try { document.fonts.load('800 20px Inter'); document.fonts.load('700 20px Inter'); document.fonts.load('600 20px "IBM Plex Mono"'); } catch (e) {}
 const flowOn = () => ROLE === 'host' && LIVE.on;
 const flowCanSelect = () => flowOn() && REMOTE.on && REMOTE.sync && REMOTE.mgrs > 0;
@@ -16,7 +18,7 @@ function flowSelectStart(){
   FLOW.phase = 'select'; FLOW.hover = -1; FLOW.t0 = performance.now(); FLOW.lost = 0; REMOTE.key = '';
   llog('Waiting for the next game to be picked on the controller');
 }
-function flowSave(){ try { localStorage.setItem(FLOW_KEY, JSON.stringify({bannerSecs: FLOW.bannerSecs, resultsSecs: FLOW.resultsSecs})); } catch (e) {} }
+function flowSave(){ try { localStorage.setItem(FLOW_KEY, JSON.stringify({bannerSecs: FLOW.bannerSecs, resultsSecs: FLOW.resultsSecs, feedbackSecs: FLOW.feedbackSecs})); } catch (e) {} }
 // called every tracking tick while the results or the "Pick your game" screen is up
 function flowTick(){
   if (FLOW.phase === 'results'){ if ((performance.now() - FLOW.t0) / 1000 >= FLOW.resultsSecs) flowResultsEnd(); return; }
@@ -47,7 +49,7 @@ function flowStep(){                                          // which banner th
   if (LIVE.state === 'arming') return LIVE.refHideAt ? 0 : 1;
   if (LIVE.state === 'ready') return FLOW.bannerSecs > 0 && state.clock - LIVE.readyAt < FLOW.bannerSecs ? 2 : 0;
   if (LIVE.state === 'collect' && (mode === 'result' || mode === 'over') && !FLOW.b3off){
-    if (state.clock - LIVE.lastSeen <= 0.5) return 3;
+    if (state.clock - LIVE.lastSeen <= 0.5) return state.clock - FLOW.resultAt >= FLOW.feedbackSecs ? 3 : 0;      // the result is on show first; banner 3 follows
     FLOW.b3off = true;                                        // picked up (or hidden under the banner): shown once per result
   }
   return 0;
