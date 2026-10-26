@@ -540,3 +540,61 @@ body.role-manage.sw{--sw-fs:14px}
 .role-manage .mgr-lock{font:700 1em/1.2 "Inter",sans-serif;border:var(--bw) dashed #0a0a0a;border-radius:0;color:#0a0a0a;padding:.45em .9em}
 .role-manage .mgr-lock[data-s="open"]{border-style:solid;background:#1a3cff;color:#fff;border-color:#1a3cff}
 .role-manage .mgr-lockfill{background:#1a3cff;opacity:.35}
+
+/* Swiss: games row, stage and right-hand panel (shared by the Evaluator and the Host) */
+.sw .bar{gap:.8em 1.6em}
+.sw .games{gap:.6em;padding-bottom:.3em}
+.sw .chip{border:var(--bw) solid #0a0a0a;border-radius:0;background:#fff;color:#0a0a0a;font:700 .95em/1.1 "Inter",sans-serif;letter-spacing:-.02em;padding:.5em .8em;gap:.6em;box-shadow:0 .25em 0 #0a0a0a;margin-bottom:.25em;transition:none}
+.sw .chip:hover{background:#f1f3f7;border-color:#0a0a0a}
+.sw .chip:active{transform:translateY(.2em);box-shadow:0 .05em 0 #0a0a0a}
+.sw .chip small{font:500 .7em/1 "IBM Plex Mono",monospace;letter-spacing:.08em;color:#555}
+.sw .chip[aria-pressed="true"]{background:#1a3cff;border-color:#1a3cff;color:#fff}
+.sw .chip[aria-pressed="true"] small{color:#fff;opacity:.85}
+.sw .stage{background:#0a0a0a;border-radius:0;padding:.8em}
+.sw #stage{border-radius:0}
+.sw #stage:focus-visible{box-shadow:0 0 0 .19em #1a3cff}
+.sw .stage-foot{color:#fff;font-size:.9em;padding:.8em .3em .2em}
+.sw .stage-foot .mono{color:#c9c9c9}
+.sw .keys{color:#c9c9c9}
+.sw .card{margin:0}
+.sw .now-head h2{font:800 1.9em/1 "Inter",sans-serif;letter-spacing:-.05em;text-transform:uppercase}
+.sw .tag{font:500 .72em/1 "IBM Plex Mono",monospace;border:var(--bw) solid #1a3cff;border-radius:0;color:#1a3cff;padding:.4em .55em}
+.sw .how{color:#555;margin:.6em 0 .8em}
+.sw .status{font:600 .9em "IBM Plex Mono",monospace}
+.sw .r-title{font:800 1.7em/1.05 "Inter",sans-serif;letter-spacing:-.04em}
+.sw .result[data-tone="good"] .r-title{color:#1a3cff}
+.sw .result[data-tone="bad"] .r-title{color:#e5002b}
+.sw h3,.sw .flabel{font:500 .78em/1.2 "IBM Plex Mono",monospace;letter-spacing:.1em;text-transform:uppercase;color:#555}
+.sw .sc th{border-bottom:var(--bw) solid #0a0a0a;color:#555}
+.sw .sc td{border-bottom:1px solid #c9c9c9}
+.sw .sc tr.cur td{background:#eef1ff}
+.sw .sc tfoot td{border-top:var(--bw) solid #0a0a0a}
+.sw .sc .over{color:#e5002b}.sw .sc .under{color:#1a3cff}.sw .sc .off{color:#e5002b}
+.sw .bowl th,.sw .bowl td,.sw .bowl .mk + .mk{border-color:#0a0a0a}
+.sw .bowl .cur{background:#eef1ff}
+.sw .seg{border:var(--bw) solid #0a0a0a;border-radius:0}
+.sw .seg span{border-left:var(--bw) solid #0a0a0a;font-weight:700;padding:.45em .8em}
+.sw .seg label:first-child span{border-left:none}
+.sw .seg input:checked + span{background:#1a3cff;color:#fff}
+.sw .seg input:focus-visible + span{outline:.19em solid #1a3cff;outline-offset:-.3em}
+.sw .hole{border-top:var(--bw) solid #0a0a0a}
+.sw .par-tag{color:#0a0a0a;font-weight:600}
+.sw .pip{border-radius:0;border:var(--bw) solid #c9c9c9;width:2.1em;height:2.1em}
+.sw .pip.par{border-color:#0a0a0a;color:#0a0a0a}
+.sw .pip.live{border-color:#1a3cff;color:#1a3cff}
+.sw .pip.on{background:#1a3cff;border-color:#1a3cff;color:#fff}
+.sw .hist i{background:#c9c9c9;opacity:1;border-radius:0}
+.sw .hist i.par{background:#1a3cff}
+.sw .stars button{border-radius:0;color:#c9c9c9}
+.sw .stars button.on,.sw .stars:hover button{color:#1a3cff}
+.sw .stars button:hover ~ button{color:#c9c9c9}
+.sw .rank-list li{border-bottom:1px solid #c9c9c9}
+.sw .rank-list li.cur .rname{font-weight:800}
+.sw details > summary{font:800 1.15em/1.2 "Inter",sans-serif;letter-spacing:-.03em}
+.sw details > summary::after{font-size:1.4em;color:#0a0a0a}
+.sw .sum-note{font-family:"IBM Plex Mono",monospace;color:#555}
+.sw .notes-list li::marker{color:#1a3cff}
+.sw .sum-list{border-top:var(--bw) solid #0a0a0a}
+.sw .sum-list .st{color:#1a3cff}
+.sw .sum-list .st i{color:#c9c9c9}
+.sw .dot[data-s="ok"]{background:#1a3cff}.sw .dot[data-s="bad"],.sw .dot[data-s="warn"]{background:#e5002b}
