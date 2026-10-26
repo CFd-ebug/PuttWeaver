@@ -348,7 +348,7 @@ function detectBall(){
   const res = {t:state.clock, count, blobs:[], best:null, note:'', weak:false, ref};
   if (count > limit) res.note = ref ? 'too much of the sheet changed (someone on it, or the camera moved)' : 'too many pixels match the ball color';
   else {
-    res.blobs = blobsIn(LIVE.roi); res.best = chooseBlob(res.blobs, {lo:rolling ? 0.15 : 0.25, hi:4, ignore, shape:!rolling, near:last, maxDist});
+    res.blobs = flowClip(blobsIn(LIVE.roi)); res.best = chooseBlob(res.blobs, {lo:rolling ? 0.15 : 0.25, hi:4, ignore, shape:!rolling, near:last, maxDist});
     if (!res.best && res.blobs.length) res.note = res.blobs.some(b => b.ignored) ? 'only spots that were already on the sheet' : res.blobs.some(b => b.far) ? 'only spots too far from the rolling ball' : res.blobs.some(b => b.shapeBad) ? 'only odd-shaped spots' : 'matches found, but none are ball-sized';
   }
   // A rolling ball smears during each camera frame, which washes out its color. Take a looser second look near where it was,
@@ -358,7 +358,7 @@ function detectBall(){
   else if (!res.best && ref && st === 'ready' && !LIVE.busy){ R2 = roiRect(0, D-1.2, W, D); o2 = {lo:0.25, hi:5, shape:true, minFill:0.45}; }
   if (R2){
     const n2 = ref ? maskPassRef(R2, rolling ? 'near' : 'band') : maskPass({h:C.h, dh:Math.min(60, C.dh*1.6), s:C.s*0.6, v:C.v*0.7}, R2);
-    if (n2 && n2 < limit/2){ const bl = blobsIn(R2), b2 = chooseBlob(bl, o2); if (b2){ res.best = b2; res.blobs = bl; res.weak = true; LIVE.stats.weak++; } }
+    if (n2 && n2 < limit/2){ const bl = flowClip(blobsIn(R2)), b2 = chooseBlob(bl, o2); if (b2){ res.best = b2; res.blobs = bl; res.weak = true; LIVE.stats.weak++; } }
   }
   LIVE.procMs = performance.now()-t0;
   return res;
@@ -518,7 +518,7 @@ function liveStep(b){
 // Each round starts by waiting for a still sheet, then (comparing to the empty sheet) takes its photo of it.
 function armReady(){
   LIVE.state = 'arming'; LIVE.armAt = state.clock; LIVE.cand = []; LIVE.hist = []; LIVE.armTrack = []; LIVE.armNote = false;
-  LIVE.refWant = 0; LIVE.refAcc = null; LIVE.refN = 0; LIVE.refForce = false;
+  LIVE.refWant = 0; LIVE.refAcc = null; LIVE.refN = 0; LIVE.refForce = false; LIVE.refHideAt = 0;
 }
 function goReady(keepRef){
   if (keepRef){ LIVE.refWant = 0; LIVE.refAcc = null; LIVE.refN = 0; }
@@ -531,6 +531,10 @@ function armTick(){
   if (LIVE.method !== 'ref'){ if (calm || since > 6) goReady(); return; }
   if (LIVE.refAt > LIVE.armAt && !LIVE.refWant){ goReady(); return; }
   if (!LIVE.refWant && (calm || since > 6)){
+    if (flowOn()){                                                  // the players' banner comes off the sheet before the empty-sheet photo
+      if (!LIVE.refHideAt) LIVE.refHideAt = state.clock;
+      if (state.clock - LIVE.refHideAt < LIVE.latency + 0.3) return;
+    }
     if (!calm && !LIVE.armNote){ LIVE.armNote = true; llog(`The sheet never looked still (${(LIVE.motion*100).toFixed(1)}% changing, usual ${(LIVE.floor*100).toFixed(1)}%). Took the empty-sheet photo anyway. If this repeats, raise Movement guard.`); }
     LIVE.refForce = !calm; LIVE.refWant = 3; LIVE.refAcc = null; LIVE.refN = 0;
   }
@@ -566,6 +570,7 @@ function liveTick(){
   if (LIVE.src === 'sim'){ const now = performance.now(); if (proj && now - simCam.last > 33){ simCam.last = now; if (simRender()){ LIVE.newFrame = true; noteCamFrame(); } } }
   if (LIVE.newFrame){ LIVE.newFrame = false; processFrame(); }
   if (!LIVE.on) return;
+  if (FLOW.phase === 'select'){ flowTick(); return; }               // the players are picking the next game on the controller
   if (LIVE.state === 'stopped' && (mode === 'result' || mode === 'over')){ LIVE.state = 'collect'; LIVE.resultAt = state.clock; }
   if (LIVE.state === 'arming'){ if (mode === 'aim') armTick(); else { LIVE.state = 'collect'; LIVE.resultAt = state.clock - 2.5; } }
   if (LIVE.state === 'collect'){
@@ -575,7 +580,7 @@ function liveTick(){
     const still = state.clock - LIVE.busyAt > 0.8 || gone > LIVE.clearT + 6;
     if (state.clock - LIVE.resultAt > 2.5 && gone > LIVE.clearT && still){
       if (mode === 'result'){ advance(); if (mode === 'over'){ LIVE.resultAt = state.clock; llog('Hole complete'); } }
-      else if (mode === 'over' && state.clock - LIVE.resultAt > 6){ startGame(); llog('New game'); }
+      else if (mode === 'over' && state.clock - LIVE.resultAt > 6){ if (flowCanSelect()) flowSelectStart(); else { startGame(); llog('New game'); } }
       if (mode === 'aim'){ armReady(); llog('Sheet clear; setting up the next round'); }
     }
   }

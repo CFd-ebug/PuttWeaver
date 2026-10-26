@@ -40,6 +40,10 @@ const REMOTE_CMDS = {
     shownIds = GAMES.map(g => g.id).filter(id => ids.includes(id));
     try { localStorage.setItem(SHOWN_KEY, JSON.stringify(shownIds)); } catch (e) {}
   },
+  hover(a){ const i = Number(a && a.idx); FLOW.hover = i >= 0 && i < GAMES.length ? i : -1; FLOW.hoverAt = state.clock; },
+  cfg(a){                                                                    // settings for what the players see
+    if (a && a.banner != null){ const v = Number(a.banner); if (!isFinite(v)) throw new Error('Not a number'); FLOW.bannerSecs = clamp(Math.round(v), 0, 30); flowSave(); }
+  },
   restart(){ startGame(); if (LIVE.on) armReady(); },
   skip(){ skipRound(); },
   rearm(){ if (!LIVE.on) throw new Error('Tracking is not running'); armReady(); llog('Retaking the empty-sheet photo (from the console)'); },
@@ -156,6 +160,9 @@ function remoteSnapshot(){
     game: {idx: gameIdx, id: game.id, name: game.name, status: mode === 'over' ? 'Hole complete' : game.status(), how: game.how},
     games: GAMES.map(g => g.name),
     gids: GAMES.map(g => g.id),
+    phase: FLOW.phase,                       // 'play', or 'select' while the projector asks the players to pick the next game
+    banner: FLOW.bannerSecs,
+    pj: flowLabel(),                         // what the projector shows, for the controller's status chip
     shown: GAMES.map((g, i) => shownIds.includes(g.id) ? i : -1).filter(i => i >= 0),
     hint: $('hint').textContent,
     result: mode === 'result' && lastResult ? {title: lastResult.title, detail: lastResult.detail || '', tone: lastResult.tone || ''} : null,

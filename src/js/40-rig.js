@@ -97,7 +97,7 @@ function expireRound(r){
   mode = 'result'; showResult(r); refreshPanel(); setHint(); updateShotInfo();
 }
 function startGame(){
-  game = GAMES[gameIdx]; game.start(); remoteHoleStart(); resetBall(); shot=null; mode='aim'; overInfo=null;
+  game = GAMES[gameIdx]; game.start(); remoteHoleStart(); flowReset(); resetBall(); shot=null; mode='aim'; overInfo=null;
   $('result').hidden=true; renderOpts(); refreshPanel(); setHint(); updateShotInfo();
 }
 function holeTitle(h){

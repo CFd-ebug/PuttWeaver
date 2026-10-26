@@ -26,7 +26,7 @@ function pairSteps(ul, rows){          // test results as a list: dot, name, det
 function runManager(){
   const el = id => document.getElementById(id);
   const root = el('mgr'); root.hidden = false;
-  let room = '', myId = '', acks = {}, tab = 'run', pvStream = null, wantTimer = 0, pvImg = null, pvSeq = 0, fitPin = null, fitDrag = -1, fitTimer = 0, fitLast = -1, streams = [], pending = new Map(), timers = [], lastState = null, hostBeat = 0, relayLive = false, gamesKey = '', shownIds = [], shownHold = 0, pendTile = null, pendTimer = 0, addTimer = 0, statsData = {}, shotList = [], repSel = 0, repAuto = true, repSpd = 1, repT0 = 0, repRaf = 0, armed = null, armTimer = 0, worldImg = null;
+  let room = '', myId = '', acks = {}, tab = 'run', pvStream = null, wantTimer = 0, pvImg = null, pvSeq = 0, fitPin = null, fitDrag = -1, fitTimer = 0, fitLast = -1, streams = [], pending = new Map(), timers = [], lastState = null, hostBeat = 0, relayLive = false, gamesKey = '', lastPhase = '', howRaf = 0, howT0 = 0, shownIds = [], shownHold = 0, pendTile = null, pendTimer = 0, addTimer = 0, statsData = {}, shotList = [], repSel = 0, repAuto = true, repSpd = 1, repT0 = 0, repRaf = 0, armed = null, armTimer = 0, worldImg = null;
   const repImgs = new Map();
   const say = (id, msg) => { el(id).textContent = msg; };
 
@@ -72,7 +72,7 @@ function runManager(){
     timers.push(setInterval(beat, 5000), setInterval(strip, 2000));
     strip(); render();
   }
-  function stop(){ srKey = ''; stopPreview(); cancelAnimationFrame(repRaf); repRaf = 0; statsData = {}; shotList = []; repImgs.clear(); streams.forEach(s => s.close()); streams = []; timers.forEach(clearInterval); timers = []; pending.clear(); lastState = null; hostBeat = 0; relayLive = false; gamesKey = ''; pickClose(); }
+  function stop(){ srKey = ''; stopPreview(); cancelAnimationFrame(repRaf); repRaf = 0; statsData = {}; shotList = []; repImgs.clear(); streams.forEach(s => s.close()); streams = []; timers.forEach(clearInterval); timers = []; pending.clear(); lastState = null; hostBeat = 0; relayLive = false; gamesKey = ''; lastPhase = ''; pickClose(); }
   function showJoin(){ stop(); room = ''; el('mgrJoin').hidden = false; el('mgrRun').hidden = true; el('mgrAdd').hidden = true; el('mgrUnpair').hidden = true; el('mgrCodeIn').focus(); }
 
   function setDot(id, s){ el(id).dataset.s = s; }
@@ -103,6 +103,10 @@ function runManager(){
       renderPick(st); renderShown(st);
     }
     else if (!el('mgrPick').hidden) markPickCurrent(st.game.idx);
+    if (!el('mgrPick').hidden) say('mgrPickPj', st.pj || '—');
+    if (st.phase === 'select' && lastPhase !== 'select' && el('mgrPick').hidden) pickShow();                  // the projector is asking: open the picker at once
+    else if (st.phase !== 'select' && lastPhase === 'select' && !el('mgrPick').hidden) pickClose();          // a game was chosen somewhere else
+    lastPhase = st.phase || '';
     const l = st.live || {}, tb = el('mgrTrackBtn');
     tb.textContent = l.on ? 'Pause tracking' : 'Start tracking'; tb.setAttribute('aria-pressed', String(!!l.on)); tb.disabled = !l.src || !l.cal;
     el('mgrHoldBtn').setAttribute('aria-pressed', String(!!st.hold)); el('mgrHoldBtn').textContent = st.hold ? 'Resume game' : 'Hold screen';
@@ -238,8 +242,22 @@ function runManager(){
   // Two taps for anything that changes the game: the first arms the key, the second sends it.
   // ---------- game picker (overlay on the Run tab) and Setup, Games shown ----------
   const pickOpen = () => !el('mgrPick').hidden;
-  function pickClose(){ clearTimeout(pendTimer); pendTile = null; el('mgrPick').hidden = true; }
-  function pickShow(){ if (!lastState || !lastState.game) return; renderPick(lastState); el('mgrPick').hidden = false; const c = el('mgrPickGrid').querySelector('.gk[aria-pressed="true"]') || el('mgrPickGrid').querySelector('.gk'); if (c) c.focus(); }
+  function pickClose(){ pickDisarm(); el('mgrPick').hidden = true; cancelAnimationFrame(howRaf); howRaf = 0; }
+  // the how-to pictures animate only while the overlay is open
+  function howLoop(){
+    const ov = el('mgrPick'); if (ov.hidden){ howRaf = 0; return; }
+    const t = (performance.now() - howT0) / 1000, img = howtoSheetImage(), dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const fit = (cv, w, h) => { const cw = Math.round(cv.clientWidth * dpr) || w, ch = Math.round(cw * h / w); if (cv.width !== cw || cv.height !== ch){ cv.width = cw; cv.height = ch; } return cw / w; };
+    ov.querySelectorAll('.gk-hc canvas').forEach((cv, k) => {
+      const sc = fit(cv, 1920, 1240), g = cv.getContext('2d'), tau = (((t - 3 * k) % 9) + 9) % 9;
+      g.setTransform(sc, 0, 0, sc, 0, 0); howtoScene(g, k + 1, tau, img, true);
+      cv.parentNode.style.opacity = tau < 3 ? 1 : .38;
+    });
+    const pc = el('mgrPerson'), ps = fit(pc, HT_PW, HT_PH), pg = pc.getContext('2d'); pg.setTransform(ps, 0, 0, ps, 0, 0); howtoPerson(pg, t, img);
+    howRaf = requestAnimationFrame(howLoop);
+  }
+  function pickDisarm(){ clearTimeout(pendTimer); if (pendTile){ pendTile.classList.remove('pend'); pendTile = null; send('hover', {idx: -1}); } }
+  function pickShow(){ if (!lastState || !lastState.game) return; renderPick(lastState); el('mgrPick').hidden = false; howT0 = performance.now(); if (!howRaf) howRaf = requestAnimationFrame(howLoop); say('mgrPickPj', lastState.pj || '—'); const c = el('mgrPickGrid').querySelector('.gk[aria-pressed="true"]') || el('mgrPickGrid').querySelector('.gk'); if (c) c.focus(); }
   function markPickCurrent(idx){ el('mgrPickGrid').querySelectorAll('.gk').forEach(t => t.setAttribute('aria-pressed', String(Number(t.dataset.idx) === idx))); }
   function renderPick(st){
     const box = el('mgrPickGrid'); box.textContent = ''; pendTile = null; clearTimeout(pendTimer);
@@ -250,8 +268,8 @@ function runManager(){
   function pickTap(tile){                 // the first tap arms the tile (dashed outline, TAP AGAIN); the second tap changes the game
     if (pendTile === tile){ clearTimeout(pendTimer); pendTile = null; pickClose(); send('game', {idx: Number(tile.dataset.idx)}); return; }
     if (pendTile) pendTile.classList.remove('pend');
-    clearTimeout(pendTimer); pendTile = tile; tile.classList.add('pend');
-    pendTimer = setTimeout(() => { tile.classList.remove('pend'); if (pendTile === tile) pendTile = null; }, 3000);
+    clearTimeout(pendTimer); pendTile = tile; tile.classList.add('pend'); send('hover', {idx: Number(tile.dataset.idx)});     // the projector outlines the same tile
+    pendTimer = setTimeout(() => { if (pendTile === tile) pickDisarm(); }, 3000);
   }
   const SHOWN_REC = ['map', 'timeline', 'periodic', 'ttt', 'bowling', 'gallery'];
   function renderShown(st){
