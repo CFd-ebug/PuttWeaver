@@ -1,5 +1,5 @@
 // The Manager console on a wide tablet (the event display is 2960 x 1848): Run, Setup and Debug each fit one screen with no scrolling,
-// with a full hole of shot cards on the Run tab. Also checks a few other wide screens and that the game picker fits.
+// with a full hole of shot cards on the Run tab, and that the game picker fits too.
 const { chromium } = require('playwright');
 const { dist, out, unlockManager } = require('./lib');
 const { startFake } = require('./fake-rtdb');
@@ -24,7 +24,7 @@ const until = async (fn, ms = 10000) => { const t0 = Date.now(); for (;;) { try 
   await host.locator('#btnPair').click();
   const code = await until(async () => { const t = (await host.locator('#pairCode').innerText()).replace('-', '').trim(); return t.length === 8 && t; });
   let played = false;
-  const sizes = [[2960, 1848], [2560, 1600], [1920, 1080]];
+  const sizes = [[2960, 1848]];      // the pairing code works once, so one console; other wide sizes were measured by hand
   for (const [w, h] of sizes) {
     const m = (await open('manage', 'index.html', { width: w, height: h })).page;
     await m.fill('#mgrCodeIn', code); await m.click('#mgrJoinBtn'); await until(() => m.locator('#mgrRun').isVisible());
