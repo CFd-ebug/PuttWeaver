@@ -23,16 +23,19 @@ const until = async (fn, ms = 10000) => { const t0 = Date.now(); for (;;) { try 
   const host = (await open('host', 'test.html', { width: 1280, height: 800 })).page;
   await host.locator('#btnPair').click();
   const code = await until(async () => { const t = (await host.locator('#pairCode').innerText()).replace('-', '').trim(); return t.length === 8 && t; });
-  await host.locator('#pairClose').click();
-  await host.evaluate(() => { const L = window.__lab; L.set('latency', 0); L.select(1); L.enterProj(); }); await sleep(300);
-  for (let k = 0; k < 4; k++) {          // a whole hole of four shots, the most the Run tab ever lists
-    await host.evaluate(async () => { const L = window.__lab, a = L.game.autoPutt(); L.putt(a.angle, a.frac); for (let i = 0; i < 4000 && L.mode !== 'result' && L.mode !== 'over'; i++) L.tick(1 / 60); await new Promise(r => setTimeout(r, 1200)); });
-    if (k < 3) await host.evaluate(() => window.__lab.advance());
-  }
+  let played = false;
   const sizes = [[2960, 1848], [2560, 1600], [1920, 1080]];
   for (const [w, h] of sizes) {
     const m = (await open('manage', 'index.html', { width: w, height: h })).page;
     await m.fill('#mgrCodeIn', code); await m.click('#mgrJoinBtn'); await until(() => m.locator('#mgrRun').isVisible());
+    if (!played) { played = true;
+    await host.locator('#pairClose').click();
+    await host.evaluate(() => { const L = window.__lab; L.set('latency', 0); L.select(1); L.enterProj(); }); await sleep(300);
+    for (let k = 0; k < 4; k++) {          // a whole hole of four shots, the most the Run tab ever lists
+      await host.evaluate(async () => { const L = window.__lab, a = L.game.autoPutt(); L.putt(a.angle, a.frac); for (let i = 0; i < 4000 && L.mode !== 'result' && L.mode !== 'over'; i++) L.tick(1 / 60); await new Promise(r => setTimeout(r, 1200)); });
+      if (k < 3) await host.evaluate(() => window.__lab.advance());
+    }
+    }
     await until(() => m.locator('#mgrShots .d-shot').count().then(n => n >= 4), 15000); await sleep(1500);
     const fits = async name => { const r = await m.evaluate(() => { const d = document.documentElement; return { sh: d.scrollHeight, ih: innerHeight, sw: d.scrollWidth, iw: innerWidth }; }); check(r.sh <= r.ih && r.sw <= r.iw, `${w}x${h} ${name} tab fits one screen (${r.sw}x${r.sh} in ${r.iw}x${r.ih})`); };
     check(await m.locator('#mgrShots .d-shot').count() >= 4, `${w}x${h} four shot cards are listed`);

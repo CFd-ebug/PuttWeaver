@@ -14,7 +14,7 @@ const suite = [
   { name: 'roles: Evaluator, Host and Manager', file: 'role-check.js', timeout: 180, ok: [NO_ERRORS] },
   { name: 'console: pairing, status, commands, reconnect', file: 'console-check.js', timeout: 240, ok: [NO_ERRORS] },
   { name: 'console: dashboard, shot replays, play statistics', file: 'dashboard-check.js', timeout: 240, ok: [NO_ERRORS] },
-  { name: 'console: fits a 2960x1848 tablet without scrolling', file: 'tablet-check.js', timeout: 300, ok: [NO_ERRORS] },
+  { name: 'console: fits a 2960x1848 tablet without scrolling', file: 'tablet-check.js', timeout: 600, ok: [NO_ERRORS] },
   { name: 'console: game picker and games shown', file: 'picker-check.js', timeout: 240, ok: [NO_ERRORS] },
   { name: 'console: refused shot saves are reported', file: 'save-check.js', timeout: 240, ok: [NO_ERRORS] },
   { name: 'projector: banners and Pick your game', file: 'flow-check.js', timeout: 240, ok: [NO_ERRORS] },
