@@ -75,10 +75,10 @@ const until = async (fn, ms = 10000, step = 100) => { const t0 = Date.now(); for
   // ---- touch confirm ----
   const idx0 = await mgr.page.evaluate(() => 0), g0 = await mgr.page.locator('#mgrGame').innerText();
   await mgr.page.locator('[data-cmd="next"]').click(); await sleep(700);
-  check((await host.page.locator('#gTitle').innerText()) === g0, 'One tap on Next game only arms it');
+  check((await host.page.locator('#gTitle').textContent()) === g0, 'One tap on Next game only arms it');
   check(/Tap again/.test(await mgr.page.locator('[data-cmd="next"]').innerText()), 'The armed key says Tap again');
   await mgr.page.locator('[data-cmd="next"]').click();
-  check(await until(async () => (await host.page.locator('#gTitle').innerText()) !== g0), 'A second tap sends it');
+  check(await until(async () => (await host.page.locator('#gTitle').textContent()) !== g0), 'A second tap sends it');
 
   // ---- reset ----
   fake.put('rooms/' + room + '/cmd/-Nreset', { type: 'resetstats', args: {}, ts: Date.now(), ttl: 8000 });
