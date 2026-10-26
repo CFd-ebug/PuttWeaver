@@ -1,7 +1,8 @@
 // ---------- Bowling ----------
 function makeBowling(){
-  let pins, knocked, trail, putts, done, log;
+  let pins, knocked, trail, putts, done, log, gutter;
   const SP = () => 0.42*K, PIN_R = () => 0.13*K, HIT = () => 0.13*K + BALL_R;
+  const PIN_HIT = () => 0.55*SP(), REACH = () => 2.4*SP(), PIN_V = () => 4*K;   // pin-to-pin contact distance, how far a full-speed pin flies, how fast pins fly on screen
   const LB = () => 1.75*K, GUT = () => 0.2*K, headY = () => D*0.42;
   const strokes = () => done === 'pick' ? 5 : putts;
   function rack(){
@@ -9,36 +10,54 @@ function makeBowling(){
     for (let r=0;r<4;r++) for (let i=0;i<=r;i++) pins.push({x:W/2+(i-r/2)*sp, y:hy-r*sp*0.866, down:false, gone:false, fall:null});
   }
   const standing = () => pins.filter(p=>!p.down && !p.gone).length;
-  function knock(p, dx, dy, e, depth){
-    if (p.down || p.gone) return;
-    p.down=true; p.fall={dx,dy,t:state.clock}; knocked++;
-    if (depth>=3 || e<0.3) return;
+  // A struck pin flies along (dx, dy) at speed v (1 = a firm putt) and topples the first standing pin it meets, the way two
+  // equal pins collide: the struck pin leaves along the line between their centers and the striker carries on with the rest.
+  // Pins bounce off the lane edges (kickbacks). No dice: the same path always leaves the same pins.
+  function topple(p, dx, dy, v, delay, depth){ p.down=true; p.fall={dx,dy,t:state.clock+delay}; knocked++; fly(p.x, p.y, dx, dy, v, delay, depth); }
+  function fly(x, y, dx, dy, v, delay, depth){
+    if (v < 0.12 || depth > 12) return;
+    const L=REACH()*v, pc=PIN_HIT(), lx=W/2-LB()/2; let hit=null, wall=false, at=L;
     for (const q of pins){
       if (q.down || q.gone) continue;
-      const rx=q.x-p.x, ry=q.y-p.y, along=rx*dx+ry*dy, perp=Math.abs(rx*dy-ry*dx);
-      if (along<=0 || along>SP()*1.9*e || perp>PIN_R()*1.6) continue;
-      if (Math.random() < 0.5+0.45*e){ const l=Math.hypot(rx,ry); let nx=dx*0.5+rx/l, ny=dy*0.5+ry/l; const nl=Math.hypot(nx,ny); knock(q, nx/nl, ny/nl, e*0.72, depth+1); }
+      const rx=q.x-x, ry=q.y-y, a=rx*dx+ry*dy, perp=Math.abs(rx*dy-ry*dx); if (a<=0 || perp>=pc) continue;
+      const ac=a-Math.sqrt(pc*pc-perp*perp); if (ac>=0 && ac<at){ hit=q; at=ac; }
     }
+    if (dx){ const a=((dx>0 ? lx+LB()-PIN_R() : lx+PIN_R())-x)/dx; if (a>0 && a<at){ hit=null; wall=true; at=a; } }
+    if (!hit && !wall) return;
+    const cx=x+dx*at, cy=y+dy*at, vr=v*(1-0.4*at/L), dl=delay+at/PIN_V();
+    if (wall) return fly(cx, cy, -dx, dy, vr*0.6, dl, depth+1);
+    let nx=hit.x-cx, ny=hit.y-cy; const nl=Math.hypot(nx,ny); nx/=nl; ny/=nl;
+    const c=nx*dx+ny*dy; topple(hit, nx, ny, vr*c*0.8, dl, depth+1);
+    const px=dx-c*nx, py=dy-c*ny, pl=Math.hypot(px,py);
+    if (pl>1e-6) fly(cx, cy, px/pl, py/pl, vr*pl*0.8, dl, depth+1);
   }
+  // ball speed over the last tenth of a second, steadier than one camera step
+  function speedAt(s){ let i=trail.length-1; while (i>0 && s.t-trail[i].t < 0.1) i--; const q=trail[i]; return q===s ? 0 : Math.hypot(s.x-q.x, s.y-q.y)/Math.max(1e-3, s.t-q.t); }
   function drawPin(x,y,r){ circle(x,y,r); ctx.fillStyle='#ffffff'; ctx.fill(); ctx.lineWidth=0.012*K; ctx.strokeStyle='#7d879c'; ctx.stroke(); circle(x,y,r*0.58); ctx.lineWidth=r*0.2; ctx.strokeStyle='#c9302a'; ctx.stroke(); circle(x,y,r*0.2); ctx.fillStyle='#d7dbe5'; ctx.fill(); }
   return {
     id:'bowling', name:'Bowling', reads:'path', tapOK:false,
     how:'Ten projected pins at the far end of a lane. Pins fall where the ball’s path crosses them and can take neighbors down. Knocked pins are cleared between putts.',
     rule:() => 'Putts to finish: your score is the putts it takes to knock down all ten pins, so a strike is a hole in one. After 4 putts you pick up and take 5.',
     hole:() => ({par:SIM.bowlPar, list:[{who:'', strokes:strokes()}], final:!!done}),
-    start(){ rack(); putts=0; done=null; log=[]; knocked=0; trail=[]; },
+    start(){ rack(); putts=0; done=null; log=[]; knocked=0; trail=[]; gutter=false; },
     status(){ return done ? 'Hole complete' : `Putt ${putts+1} of ${MAX_PUTTS} · ${plural(standing(),'pin')} standing`; },
-    /*SIM*/autoPutt(){ const st = pins.filter(p=>!p.down && !p.gone), f = st.reduce((a,p) => p.y > a.y ? p : a); return puttTo(f.x, f.y, 1.2*K); },/*/SIM*/
-    onShotStart(){ knocked=0; trail=[]; },
+    /*SIM*/autoPutt(){   // the pocket beside the head pin on a full rack, otherwise straight at the nearest standing pin
+      const st = pins.filter(p=>!p.down && !p.gone), f = st.reduce((a,p) => p.y > a.y ? p : a);
+      return puttTo(f.x + (st.length === 10 ? 0.24*SP() : 0), f.y, 1.5*K); },/*/SIM*/
+    onShotStart(){ knocked=0; trail=[]; gutter=false; },
     onSample(s, prev){
-      trail.push(s); if (!prev) return;
+      trail.push(s); if (!prev || gutter) return;
       const dx=s.x-prev.x, dy=s.y-prev.y, L=Math.hypot(dx,dy); if (L<1e-6) return;
-      const bx=dx/L, by=dy/L, speed=L/Math.max(1e-3, s.t-prev.t);
+      const bx=dx/L, by=dy/L, v=clamp(speedAt(s)/2.5, 0.5, 1), h=HIT();
       for (const p of pins){
         if (p.down || p.gone) continue;
-        const r = segClosest(p.x,p.y,prev.x,prev.y,s.x,s.y);
-        if (r.d < HIT()){ const nx=p.x-r.x, ny=p.y-r.y, nl=Math.hypot(nx,ny)||1; const fx=bx*0.6+nx/nl, fy=by*0.6+ny/nl, fl=Math.hypot(fx,fy); knock(p, fx/fl, fy/fl, clamp(speed/2.5,0.5,1), 0); }
+        // where along this step the ball first touches the pin; the pin leaves along the line between their centers
+        const fx=prev.x-p.x, fy=prev.y-p.y, b=fx*bx+fy*by, disc=b*b-(fx*fx+fy*fy-h*h); if (disc<0) continue;
+        const t0=-b-Math.sqrt(disc), t1=-b+Math.sqrt(disc); if (t1<0 || t0>L) continue;
+        const t=Math.max(0,t0); let nx=p.x-(prev.x+bx*t), ny=p.y-(prev.y+by*t); const nl=Math.hypot(nx,ny)||1; nx/=nl; ny/=nl;
+        topple(p, nx, ny, v*(0.35+0.65*Math.max(0, nx*bx+ny*by)), 0, 0);
       }
+      if (Math.abs(s.x-W/2) > LB()/2) gutter=true;   // the ball's center crossed the lane edge: nothing counts after this
     },
     drawSheet(){
       const t=state.clock, lb=LB(), g=GUT(), lx=W/2-lb/2, hy=headY();
@@ -56,7 +75,7 @@ function makeBowling(){
       if (trail.length>1){ ctx.strokeStyle='rgba(30,50,120,0.3)'; ctx.lineWidth=0.05*K; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(trail[0].x,trail[0].y); for (const s of trail) ctx.lineTo(s.x,s.y); ctx.stroke(); }
       for (const p of pins){
         if (p.gone) continue;
-        if (!p.down){ drawPin(p.x,p.y,PIN_R()); continue; }
+        if (!p.down || t < p.fall.t){ drawPin(p.x,p.y,PIN_R()); continue; }
         const pr = clamp((t-p.fall.t)/0.35,0,1), e = 1-(1-pr)*(1-pr);
         const cx=p.x+p.fall.dx*0.2*K*e, cy=p.y+p.fall.dy*0.2*K*e, ang=Math.atan2(p.fall.dy,p.fall.dx);
         ctx.save(); ctx.translate(cx,cy); ctx.rotate(ang); ctx.globalAlpha = t-p.fall.t > 1.2 ? 0.55 : 1;
@@ -72,14 +91,15 @@ function makeBowling(){
       txt('STROKES', mx, D*0.62, 0.08*K, {font:'display', color:'#5a6276', ls:.1});
       txt(String(strokes()), mx, D*0.62+0.3*K, 0.3*K, {font:'display', color:'#1d2333'});
       txt('PINS', sx, D*0.16, 0.08*K, {font:'display', color:'#5a6276', ls:.1});
-      for (const p of pins){ const x=sx+(p.x-W/2)*0.75, y=D*0.16+0.32*K+(hy-p.y)*0.75; circle(x,y,0.07*K); if (!p.down && !p.gone){ ctx.fillStyle='#1d2333'; ctx.fill(); } else { ctx.lineWidth=0.012*K; ctx.strokeStyle='#9aa2b4'; ctx.stroke(); } }
+      // head pin at the bottom, as on the lane
+      for (const p of pins){ const x=sx+(p.x-W/2)*0.75, y=D*0.16+0.32*K+(p.y-hy+SP()*3*0.866)*0.75; circle(x,y,0.07*K); if (!p.down && !p.gone){ ctx.fillStyle='#1d2333'; ctx.fill(); } else { ctx.lineWidth=0.012*K; ctx.strokeStyle='#9aa2b4'; ctx.stroke(); } }
     },
     onRest(p, why){
       putts++; const left = standing(); log.push({down:knocked, left});
-      const note = why && !knocked ? ' '+WHY[why] : '';
+      const note = why && !knocked ? ' '+WHY[why] : '', reached = trail.some(s => s.y < headY()+PIN_R());
       if (!left){ done='clear'; return {title: putts===1 ? 'Strike: hole in one' : putts===2 ? 'Spare: all ten in 2' : `All ten in ${putts}`, detail:`Hole score ${putts}.`, tone:'good'}; }
       if (putts >= MAX_PUTTS){ done='pick'; return {title:'Pick up', detail:`${plural(left,'pin')} still standing after ${MAX_PUTTS} putts, so the hole scores 5.`+note, tone:'bad'}; }
-      return {title: knocked ? plural(knocked,'pin') : (p ? 'No pins' : 'Gutter ball'), detail:`${plural(left,'pin')} standing, ${plural(putts,'stroke')} so far.`+note, tone: knocked ? '' : 'bad'};
+      return {title: knocked ? plural(knocked,'pin') : gutter ? 'Gutter ball' : why === 'short' || (p && !reached) ? 'Short' : 'No pins', detail:`${plural(left,'pin')} standing, ${plural(putts,'stroke')} so far.`+note, tone: knocked ? '' : 'bad'};
     },
     advance(){ if (done) return 'over'; pins.forEach(p => { if (p.down) p.gone = true; }); trail=[]; return 'next'; },
     summary(){ return {detail: done === 'clear' ? `All ten pins down in ${plural(putts,'putt')}.` : `${plural(standing(),'pin')} left standing after ${MAX_PUTTS} putts.`}; },
@@ -89,7 +109,8 @@ function makeBowling(){
       return `<table class="sc"><thead><tr><th>Putt</th><th class="num">Knocked</th><th class="num">Standing</th></tr></thead><tbody>${r}</tbody><tfoot><tr><td colspan="2">Strokes</td><td class="num">${strokes()}</td></tr></tfoot></table>`;
     },
     notes(){ return li([
-      `Reads <b>the ball’s path</b>. A pin falls when the path passes within ${(HIT()*12).toFixed(1)} in of its center, the same ratio a bowling ball has to real pins. Falling pins can take down neighbors.`,
+      `Reads <b>the ball’s path</b>. A pin falls when the path passes within ${(HIT()*12).toFixed(1)} in of its center, the same ratio a bowling ball has to real pins. A ball whose center crosses the lane edge is in the gutter and knocks nothing down after that.`,
+      `Falling pins collide like real pins: a struck pin flies off along the line between the centers, knocks over what it meets and bounces off the lane edges. There is no randomness, so the same path always leaves the same pins. As in bowling, a ball about ${(0.24*SP()*12).toFixed(1)} in to either side of the head pin (the pocket) strikes far more often than a dead-center hit, and a firm putt carries more pins than a slow one.`,
       `<b>Putts-to-finish scoring</b> turns bowling into golf: a strike is an ace and a spare is a 2. In simulation at the default rig settings, an office-average putter averages ${SIM.bowlAvg} strokes and strikes ${SIM.bowlStrike}% of the time, which sets par at ${SIM.bowlPar}.`,
       'Pins drop when the camera reports the hit. With 250 ms of lag the ball is visibly past the rack before anything falls, which looks broken to players. Aim for under 100 ms.',
       'Pins reset by redrawing, so there is no pinsetter to build. Ball retrieval is the only reset time between putts.'
