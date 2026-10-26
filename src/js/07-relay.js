@@ -23,15 +23,33 @@ function relayRandom(n){
   return s;
 }
 function relayNow(){ return Date.now() + relayState.offset; }
+// ---- an estimate of this device's own traffic this month (for the Setup usage meter) ----
+// Firebase's free plan allows 10 GB of downloads a month for the whole database; the console adds up what the Host and each
+// Manager report about themselves. It is an estimate: headers are guessed, and a device that is not counted is missing.
+const RELAY_USE_KEY = 'putt-lab-use', RELAY_HDR = 400;
+const RELAY_USE = (() => {
+  const m = new Date().toISOString().slice(0, 7); let r = null;
+  try { r = JSON.parse(localStorage.getItem(RELAY_USE_KEY) || 'null'); } catch (e) {}
+  return r && r.m === m && isFinite(r.up) && isFinite(r.down) ? {m, up: r.up, down: r.down, dirty: false, timer: 0} : {m, up: 0, down: 0, dirty: false, timer: 0};
+})();
+function relayCount(up, down){
+  const m = new Date().toISOString().slice(0, 7); if (m !== RELAY_USE.m){ RELAY_USE.m = m; RELAY_USE.up = 0; RELAY_USE.down = 0; }
+  RELAY_USE.up += up; RELAY_USE.down += down; RELAY_USE.dirty = true;
+  if (!RELAY_USE.timer) RELAY_USE.timer = setTimeout(() => { RELAY_USE.timer = 0; RELAY_USE.dirty = false; try { localStorage.setItem(RELAY_USE_KEY, JSON.stringify({m: RELAY_USE.m, up: RELAY_USE.up, down: RELAY_USE.down})); } catch (e) {} }, 5000);
+}
+const relayUse = () => ({m: RELAY_USE.m, up: Math.round(RELAY_USE.up), down: Math.round(RELAY_USE.down)});
 async function relaySend(method, path, body, timeoutMs){
   const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), timeoutMs || 8000);
   try {
-    const res = await fetch(relayUrl(path), {method, body: body === undefined ? undefined : JSON.stringify(body), signal: ctl.signal, cache: 'no-store'});
+    const payload = body === undefined ? undefined : JSON.stringify(body);
+    relayCount(RELAY_HDR + (payload ? payload.length : 0), 0);
+    const res = await fetch(relayUrl(path), {method, body: payload, signal: ctl.signal, cache: 'no-store'});
     if (!res.ok){
       let detail = ''; try { detail = (await res.json()).error || ''; } catch (e) {}
       const err = new Error(method + ' ' + path + ': ' + res.status + (detail ? ' ' + detail : '')); err.status = res.status; throw err;
     }
-    return await res.json();
+    const txt = await res.text(); relayCount(0, RELAY_HDR + txt.length);
+    return JSON.parse(txt);
   } catch (e) {
     if (e.name === 'AbortError'){ const err = new Error(method + ' ' + path + ': timed out'); err.status = 0; throw err; }
     if (e.status === undefined) e.status = 0;       // network failure
@@ -72,11 +90,13 @@ function relayStream(path, handlers){
     try { es = new EventSource(relayUrl(path)); } catch (e) { fail(); return; }
     bump();
     es.addEventListener('put', ev => {
+      relayCount(0, 60 + String(ev.data).length);
       const m = parse(ev); if (!m) return; bump(); tries = 0;
       cache = relaySetAt(cache, m.path || '/', m.data);
       setStatus('live'); if (handlers.onData) handlers.onData(cache, m.path || '/');
     });
     es.addEventListener('patch', ev => {
+      relayCount(0, 60 + String(ev.data).length);
       const m = parse(ev); if (!m || !m.data) return; bump(); tries = 0;
       const base = (m.path || '/').replace(/\/+$/, '');
       for (const k in m.data) cache = relaySetAt(cache, base + '/' + k, m.data[k]);

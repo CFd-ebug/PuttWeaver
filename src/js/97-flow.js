@@ -6,22 +6,35 @@
 //   3 RESET BALL     the result is showing and the ball is still on the sheet; a dotted route leads back to the start
 // Players never see any of this on an Evaluator, and without a paired controller the games simply restart as before.
 const FLOW_KEY = 'putt-lab-flow';
-const FLOW = {phase: 'play', hover: -1, hoverAt: 0, t0: 0, b3off: false, bannerSecs: 5, imgs: {}, lost: 0};
-try { const c = JSON.parse(localStorage.getItem(FLOW_KEY) || '{}'); if (isFinite(c.bannerSecs)) FLOW.bannerSecs = clamp(+c.bannerSecs, 0, 30); } catch (e) {}
+const FLOW = {phase: 'play', hover: -1, hoverAt: 0, t0: 0, b3off: false, bannerSecs: 5, resultsSecs: 15, queued: -1, res: null, shots: [], imgs: {}, lost: 0};
+try { const c = JSON.parse(localStorage.getItem(FLOW_KEY) || '{}'); if (isFinite(c.bannerSecs)) FLOW.bannerSecs = clamp(+c.bannerSecs, 0, 30); if (isFinite(c.resultsSecs)) FLOW.resultsSecs = clamp(+c.resultsSecs, 0, 60); } catch (e) {}
 try { document.fonts.load('800 20px Inter'); document.fonts.load('700 20px Inter'); document.fonts.load('600 20px "IBM Plex Mono"'); } catch (e) {}
 const flowOn = () => ROLE === 'host' && LIVE.on;
 const flowCanSelect = () => flowOn() && REMOTE.on && REMOTE.sync && REMOTE.mgrs > 0;
-function flowReset(){ FLOW.phase = 'play'; FLOW.hover = -1; FLOW.b3off = false; }                      // a game has started: back to playing
+function flowReset(){ FLOW.phase = 'play'; FLOW.hover = -1; FLOW.b3off = false; FLOW.queued = -1; FLOW.res = null; FLOW.shots = []; }                      // a game has started: back to playing
 function flowSelectStart(){
   FLOW.phase = 'select'; FLOW.hover = -1; FLOW.t0 = performance.now(); FLOW.lost = 0; REMOTE.key = '';
   llog('Waiting for the next game to be picked on the controller');
 }
-function flowSave(){ try { localStorage.setItem(FLOW_KEY, JSON.stringify({bannerSecs: FLOW.bannerSecs})); } catch (e) {} }
-// called every tracking tick while a game is being picked: with nobody left to pick, the same game starts again
+function flowSave(){ try { localStorage.setItem(FLOW_KEY, JSON.stringify({bannerSecs: FLOW.bannerSecs, resultsSecs: FLOW.resultsSecs})); } catch (e) {} }
+// called every tracking tick while the results or the "Pick your game" screen is up
 function flowTick(){
+  if (FLOW.phase === 'results'){ if ((performance.now() - FLOW.t0) / 1000 >= FLOW.resultsSecs) flowResultsEnd(); return; }
   if (FLOW.phase !== 'select') return;
   if (REMOTE.mgrs > 0 && REMOTE.sync) FLOW.lost = 0; else if (!FLOW.lost) FLOW.lost = state.clock;
   if (FLOW.lost && state.clock - FLOW.lost > 8){ llog('Nobody is picking a game; starting the same one again'); startGame(); if (LIVE.on) armReady(); }
+}
+// the hole is over and the ball is picked up: results first (if there is a score and they are switched on), then the game picker
+function flowAfterHole(){
+  if (FLOW.res && FLOW.resultsSecs > 0){
+    FLOW.phase = 'results'; FLOW.hover = -1; FLOW.queued = -1; FLOW.t0 = performance.now(); FLOW.lost = 0; REMOTE.key = '';
+    llog('Showing the results for ' + FLOW.resultsSecs + ' s');
+  } else flowSelectStart();
+}
+function flowResultsEnd(){
+  const q = FLOW.queued;
+  if (q >= 0 && q < GAMES.length){ llog('Starting ' + GAMES[q].name + ', picked during the results'); gameIdx = q; startGame(); if (LIVE.on) armReady(); }
+  else flowSelectStart();
 }
 
 // ---- banners ----
@@ -30,7 +43,7 @@ function flowTick(){
 // last moments of setting up), and while a banner is on, blobs inside its strip are ignored (flowStripY, used by detectBall).
 function flowStep(){                                          // which banner the players should see: 1, 2, 3 or 0
   if (LIVE.state !== 'collect') FLOW.b3off = false;
-  if (!flowOn() || FLOW.phase === 'select' || REMOTE.hold) return 0;
+  if (!flowOn() || FLOW.phase !== 'play' || REMOTE.hold) return 0;
   if (LIVE.state === 'arming') return LIVE.refHideAt ? 0 : 1;
   if (LIVE.state === 'ready') return FLOW.bannerSecs > 0 && state.clock - LIVE.readyAt < FLOW.bannerSecs ? 2 : 0;
   if (LIVE.state === 'collect' && (mode === 'result' || mode === 'over') && !FLOW.b3off){
@@ -58,7 +71,7 @@ function flowDrawBanner(){                                    // inside the shee
 }
 
 // what the projector shows right now, in words, for the console
-function flowLabel(){ return FLOW.phase === 'select' ? 'Pick your game' : (['', 'Ball at start', 'Putt now', 'Reset ball'][flowStep()] || (game ? game.name : '')); }
+function flowLabel(){ return FLOW.phase === 'select' ? 'Pick your game' : FLOW.phase === 'results' ? 'Results' + (FLOW.queued >= 0 && GAMES[FLOW.queued] ? ' · up next ' + GAMES[FLOW.queued].name : '') : (['', 'Ball at start', 'Putt now', 'Reset ball'][flowStep()] || (game ? game.name : '')); }
 
 // ---- the "Pick your game" screen ----
 function flowImg(id){

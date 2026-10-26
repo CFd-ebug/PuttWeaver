@@ -444,3 +444,26 @@ body.role-manage .app{max-width:none}
 .gk-person canvas{display:block;width:100%;aspect-ratio:640/492;height:auto}
 .gk-card h2{font-size:6.5em}
 @media (max-width:1099px){.gk-top{grid-template-columns:1fr}.gk-card h2{font-size:2.6em}.gk-pj{min-width:0;height:4em}.gk-ar{width:1.2em}.gk-ar svg{width:1.1em;height:1.1em}.gk-person{max-width:32em}}
+
+/* Setup: players' screen, statistics, usage */
+.ps-wrap{grid-column:1 / -1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.2em;align-items:start}.ps-wrap #mgrPlayCard{grid-column:1 / -1}
+@media (max-width:1099px){.ps-wrap{grid-template-columns:1fr}}
+.ps-row{display:flex;align-items:center;justify-content:space-between;gap:1.5em;padding:1em 0;border-bottom:.09em solid #c9c9c9}
+.ps-row:last-child{border-bottom:0}
+.ps-txt{min-width:0}.ps-txt b{display:block;font-size:2em;font-weight:700;letter-spacing:-.03em}.ps-txt span{display:block;margin-top:.35em;font-size:1.2em;line-height:1.35;color:#555}
+.ps-step{flex:none;display:flex;align-items:center;gap:.8em}
+.ps-step .btn.key.small{margin:0 0 .3em;min-width:3.2em}
+.ps-step output{min-width:5.6em;text-align:center;font:600 1.9em/1 "IBM Plex Mono",monospace}
+.ps-btns{display:flex;gap:.8em;flex-wrap:wrap;margin:.6em 0}
+.ps-sure{margin:.6em 0;padding:1em 1.2em;border:.1875em solid #e5002b;background:#fff}
+.ps-sure b{display:block;font-size:2em;font-weight:800;letter-spacing:-.03em;color:#e5002b}.ps-sure span{display:block;margin:.4em 0 .2em;font-size:1.25em;line-height:1.35}
+.btn.ps-yes{background:#e5002b;border-color:#e5002b;color:#fff;box-shadow:0 .375em 0 #0a0a0a}
+.ps-use{display:flex;align-items:center;gap:1.2em;margin:.4em 0 .6em}
+.ps-use b{flex:none;min-width:3.4em;font-size:2.8em;font-weight:600}
+.ps-bar{position:relative;flex:1;height:1.6em;border:.1875em solid #0a0a0a;background:#fff}
+.ps-bar i{position:absolute;left:0;top:0;bottom:0;background:#1a3cff}
+.ps-mark{position:absolute;left:70%;top:-.4em;bottom:-.4em;width:.1875em;background:#0a0a0a}
+#mgrUseCard.hot .ps-bar i{background:#e5002b}#mgrUseCard.hot .ps-use b{color:#e5002b}
+.ps-warn{margin:.4em 0 0;padding:.8em 1em;border:.1875em solid #e5002b;color:#e5002b;font-size:1.25em;font-weight:700;line-height:1.35}
+.mgr-warn{font-weight:700;color:#e5002b;border:.125em solid #e5002b;padding:.1em .6em}
+@media (max-width:1099px){.ps-row{flex-direction:column;align-items:flex-start}.ps-txt b{font-size:1.5em}.ps-use b{font-size:2em}}

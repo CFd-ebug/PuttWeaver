@@ -86,7 +86,7 @@ function advance(){
   if (mode!=='result') return;
   const r = game.advance();
   shot = null; resetBall();
-  if (r==='over'){ mode='over'; overInfo=buildOver(); showSummary(); logHole(); remoteHoleDone(); }
+  if (r==='over'){ mode='over'; overInfo=buildOver(); showSummary(); logHole(); remoteHoleDone(); flowHoleDone(); }
   else { mode='aim'; $('result').hidden=true; }
   refreshPanel(); setHint(); updateShotInfo();
 }
