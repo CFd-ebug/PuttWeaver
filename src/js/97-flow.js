@@ -6,12 +6,12 @@
 //   3 RESET BALL     the result is showing and the ball is still on the sheet; a dotted route leads back to the start
 // Players never see any of this on an Evaluator, and without a paired controller the games simply restart as before.
 const FLOW_KEY = 'putt-lab-flow';
-const FLOW = {phase: 'play', hover: -1, hoverAt: 0, t0: 0, bannerSecs: 5, imgs: {}, lost: 0};
+const FLOW = {phase: 'play', hover: -1, hoverAt: 0, t0: 0, b3off: false, bannerSecs: 5, imgs: {}, lost: 0};
 try { const c = JSON.parse(localStorage.getItem(FLOW_KEY) || '{}'); if (isFinite(c.bannerSecs)) FLOW.bannerSecs = clamp(+c.bannerSecs, 0, 30); } catch (e) {}
 try { document.fonts.load('800 20px Inter'); document.fonts.load('700 20px Inter'); document.fonts.load('600 20px "IBM Plex Mono"'); } catch (e) {}
 const flowOn = () => ROLE === 'host' && LIVE.on;
 const flowCanSelect = () => flowOn() && REMOTE.on && REMOTE.sync && REMOTE.mgrs > 0;
-function flowReset(){ FLOW.phase = 'play'; FLOW.hover = -1; }                      // a game has started: back to playing
+function flowReset(){ FLOW.phase = 'play'; FLOW.hover = -1; FLOW.b3off = false; }                      // a game has started: back to playing
 function flowSelectStart(){
   FLOW.phase = 'select'; FLOW.hover = -1; FLOW.t0 = performance.now(); FLOW.lost = 0; REMOTE.key = '';
   llog('Waiting for the next game to be picked on the controller');
@@ -25,13 +25,21 @@ function flowTick(){
 }
 
 // ---- banners ----
+// The camera sees what the projector draws, so a banner changes the picture over the top strip of the sheet. Two rules keep the
+// tracker from mistaking that for a ball: the empty-sheet photo is taken with no banner on the sheet (banner 1 is hidden for the
+// last moments of setting up), and while a banner is on, blobs inside its strip are ignored (flowStripY, used by detectBall).
 function flowStep(){                                          // which banner the players should see: 1, 2, 3 or 0
+  if (LIVE.state !== 'collect') FLOW.b3off = false;
   if (!flowOn() || FLOW.phase === 'select' || REMOTE.hold) return 0;
-  if (LIVE.state === 'arming') return 1;
+  if (LIVE.state === 'arming') return LIVE.refHideAt ? 0 : 1;
   if (LIVE.state === 'ready') return FLOW.bannerSecs > 0 && state.clock - LIVE.readyAt < FLOW.bannerSecs ? 2 : 0;
-  if (LIVE.state === 'collect' && (mode === 'result' || mode === 'over') && state.clock - LIVE.lastSeen <= 0.5) return 3;
+  if (LIVE.state === 'collect' && (mode === 'result' || mode === 'over') && !FLOW.b3off){
+    if (state.clock - LIVE.lastSeen <= 0.5) return 3;
+    FLOW.b3off = true;                                        // picked up (or hidden under the banner): shown once per result
+  }
   return 0;
 }
+const flowStripY = () => flowStep() ? 200 / 1080 * D + 0.3 : 0;   // feet from the far edge covered by the banner (plus the reach of a blob that is half hidden by it); 0 when none is up
 function flowDrawBanner(){                                    // inside the sheet's clip, in feet
   const step = flowStep(); if (!step) return;
   const t = performance.now() / 1000;
@@ -97,3 +105,4 @@ function flowDrawSelect(){
   });
   ctx.restore();
 }
+function flowClip(blobs){ const y = flowStripY(); return y ? blobs.filter(b => b.y > y) : blobs; }   // ignore what is inside the banner's strip
