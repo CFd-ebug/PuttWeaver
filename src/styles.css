@@ -598,3 +598,39 @@ body.role-manage.sw{--sw-fs:14px}
 .sw .sum-list .st{color:#1a3cff}
 .sw .sum-list .st i{color:#c9c9c9}
 .sw .dot[data-s="ok"]{background:#1a3cff}.sw .dot[data-s="bad"],.sw .dot[data-s="warn"]{background:#e5002b}
+
+/* Swiss: Host-only controls (stage buttons, live tracking panel, projector bar, corner handles) */
+.sw .proj-btn{background:#fff;border-color:#fff;color:#0a0a0a;box-shadow:0 .25em 0 #1a3cff}
+.sw .proj-btn:hover{background:#f1f3f7;border-color:#fff}
+.sw .live-panel{background:#fff;color:#0a0a0a;border:var(--bw) solid #0a0a0a;border-radius:0;padding:1em 1.1em;font:400 1em/1.4 "Inter",sans-serif}
+.sw .live-panel h2{font:800 1.5em/1 "Inter",sans-serif;letter-spacing:-.05em;text-transform:uppercase}
+.sw .lp-sec{border-top:var(--bw) solid #0a0a0a;padding-top:.7em;margin-top:.8em}
+.sw .lp-sec h3{color:#555}
+.sw .live-panel .btn:not(.key){background:#fff;border-color:#0a0a0a;color:#0a0a0a;font-size:.9em;padding:.4em .7em}
+.sw .live-panel .btn.primary:not(.key){background:#1a3cff;border-color:#1a3cff;color:#fff}
+.sw .live-panel .btn:disabled{opacity:.4}
+.sw .live-panel select{background-color:#fff;color:#0a0a0a;border:var(--bw) solid #0a0a0a;border-radius:0;font-size:.9em;padding:.35em 2.2em .35em .5em}
+.sw .live-panel .flabel{color:#555}
+.sw .live-panel .check{color:#0a0a0a;font-size:.9em}
+.sw .lp-note{color:#555}
+.sw .lp-note[data-tone="good"]{color:#1a3cff}
+.sw .lp-note[data-tone="bad"]{color:#e5002b}
+.sw .lp-st{border-bottom:1px solid #c9c9c9}
+.sw .lp-st span{color:#555}
+.sw .lp-st b{font-family:"IBM Plex Mono",monospace;font-weight:600}
+.sw .lp-st[data-s="ok"] b{color:#1a3cff}
+.sw .lp-st[data-s="warn"] b{color:#e5002b;text-decoration:underline}
+.sw .lp-st[data-s="no"] b{color:#e5002b}
+.sw .lp-sl{color:#0a0a0a}
+.sw .lp-sl input{width:100%}
+.sw .lp-more summary{color:#0a0a0a;font:700 .9em "Inter",sans-serif}
+.sw .lp-more summary::after{color:#0a0a0a}
+.sw #lpPreview{border:var(--bw) solid #0a0a0a;border-radius:0;background:#0a0a0a}
+.sw .lp-log{color:#555}
+.sw .lp-log b{color:#0a0a0a}
+.sw #lpReportText{background:#f1f3f7;color:#0a0a0a;border:var(--bw) solid #0a0a0a;border-radius:0}
+.sw .proj-ui{background:#fff;color:#0a0a0a;border:var(--bw) solid #0a0a0a;border-radius:0;font:500 .8em/1.35 "IBM Plex Mono",monospace;padding:.6em .8em}
+.sw .proj-ui .btn:not(.key){background:#fff;color:#0a0a0a;border-color:#0a0a0a}
+.sw .proj-ui .btn[aria-pressed="true"]:not(.key){background:#1a3cff;border-color:#1a3cff;color:#fff}
+.sw .pin-h{border-radius:0;border:var(--bw) solid #fff;background:rgba(26,60,255,.55)}
+.sw .pin-h span{font-family:"IBM Plex Mono",monospace;background:#0a0a0a;border-radius:0}
