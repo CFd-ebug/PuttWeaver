@@ -68,6 +68,40 @@ function makeBowling(){
     if (sub && a-at > 0.35) txt(sub, W/2, y+0.36*K, 0.1*K, {font:'display', color:'#c5ccff', ls:.12});
     ctx.globalAlpha = 1;
   }
+  const backOut = u => { u = clamp(u,0,1)-1; return 1 + 2.70158*u*u*u + 1.70158*u*u; };   // overshoots, then settles
+  // A ribbon banner: it unfurls from the middle, its notched tails fold out behind, the letters pop in one by one and a few
+  // sparkles twinkle. It flutters for under 2 s and then holds still.
+  function ribbon(str, sub, a){
+    const cx = W/2, cy = headY() + (D-headY())*0.45, BW = 3*K, BH = 0.56*K, damp = Math.max(0, 1-a/1.8);
+    const sx = backOut(a/0.35), arc = (0.08 + 0.03*Math.sin(a*7)*damp)*K, bow = u => -arc*Math.cos(Math.PI*u);   // u from -0.5 to 0.5
+    if (sx <= 0) return;
+    const tl = ease((a-0.25)/0.2)*0.5*K, drop = 0.16*K, ex = BW/2*sx;
+    for (const side of [-1, 1]) if (tl > 0){   // tail behind each end, then the fold that joins it to the band
+      const x0 = cx + side*(ex-0.25*K), x1 = cx + side*(ex+tl), y0 = cy - BH/2 + drop, y1 = cy + BH/2 + drop, n = 0.14*K*Math.min(1, tl/(0.5*K));
+      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y0); ctx.lineTo(x1 - side*n, cy + drop); ctx.lineTo(x1, y1); ctx.lineTo(x0, y1); ctx.closePath();
+      ctx.fillStyle = '#a61e4d'; ctx.fill();
+      ctx.beginPath(); ctx.moveTo(cx + side*ex, cy + BH/2 + bow(0.5)); ctx.lineTo(cx + side*(ex-0.25*K), cy + BH/2 + drop); ctx.lineTo(cx + side*(ex-0.25*K), cy + BH/2 + bow(0.5)); ctx.closePath();
+      ctx.fillStyle = '#5c0f2e'; ctx.fill();
+    }
+    ctx.beginPath(); const N = 24;   // the band, bowed up in the middle
+    for (let i=0;i<=N;i++){ const u = i/N-0.5; ctx[i ? 'lineTo' : 'moveTo'](cx + u*2*ex, cy - BH/2 + bow(u)); }
+    for (let i=N;i>=0;i--){ const u = i/N-0.5; ctx.lineTo(cx + u*2*ex, cy + BH/2 + bow(u)); }
+    ctx.closePath(); ctx.fillStyle = '#c2255c'; ctx.fill(); ctx.lineWidth = 0.02*K; ctx.strokeStyle = '#ffffff'; ctx.stroke();
+    const size = 0.38*K, o = {font:'display'}, ws = [...str].map(c => tw(c, size, o)), tot = ws.reduce((m,w) => m+w, 0);
+    let x = cx - tot/2;
+    for (let i=0;i<str.length;i++){   // letters pop in one after another, riding the bow of the band
+      const k = (a - 0.3 - i*0.06)/0.28, sc = backOut(k), xc = x + ws[i]/2;
+      if (k > 0) txt(str[i], xc, cy + bow((xc-cx)/(2*ex||1)) + 0.01*K, size*sc, {font:'display', color:'#ffffff', halo:'#5c0f2e'});
+      x += ws[i];
+    }
+    for (let i=0;i<8;i++){   // sparkles: four-point stars around the ribbon
+      const st = 0.5 + i*0.11, v = Math.sin(Math.PI*clamp((a-st)/0.5,0,1)); if (v <= 0) continue;
+      const ang = i*2.4, px = cx + Math.cos(ang)*(BW*0.55), py = cy + Math.sin(ang)*0.6*K, r = 0.14*K*v;
+      ctx.beginPath(); for (let j=0;j<8;j++){ const rr = j%2 ? r*0.25 : r, t = j*Math.PI/4; ctx[j ? 'lineTo' : 'moveTo'](px + Math.cos(t)*rr, py + Math.sin(t)*rr); }
+      ctx.closePath(); ctx.fillStyle = i%2 ? '#ffffff' : '#f783ac'; ctx.fill();
+    }
+    if (sub && a > 0.9) pill(sub, cx, cy + 0.6*K, 0.1*K, NAVY, '#ffffff', {font:'display', ls:.12});
+  }
   function wave(str, x, y, size, color, off){   // letters drawn one by one, each moved by off(i)
     const o = {font:'display'}, w = tw(str, size, o); let cx = x - w/2;
     for (let i=0;i<str.length;i++){ const cw = tw(str[i], size, o), d = off(i); txt(str[i], cx+cw/2+d.x, y+d.y, size, {font:'display', color}); cx += cw; }
@@ -83,7 +117,7 @@ function makeBowling(){
         rrect(-r*1.6,-r*0.6,r*3.2,r*1.2,r*0.6); ctx.fillStyle = '#ffffff'; ctx.fill(); ctx.lineWidth = 0.01*K; ctx.strokeStyle = '#7d879c'; ctx.stroke();
         ctx.fillStyle = '#c9302a'; ctx.fillRect(r*0.4,-r*0.6,r*0.35,r*1.2); ctx.restore();
       }
-      slam('STRIKE', 'HOLE IN ONE', a, 0.15);
+      ribbon('STRIKE!', 'HOLE IN ONE', a - 0.1);
     } else if (show.kind === 'spare'){
       const u = ease(a/0.4), x0 = lx+0.15*K, y0 = hy+0.35*K, x1 = lx+LB()-0.15*K, y1 = hy-3*SP()*0.866-0.3*K;   // the spare mark: a slash
       ctx.lineCap = 'round'; ctx.lineWidth = 0.14*K; ctx.strokeStyle = BLUE; seg(x0, y0, x0+(x1-x0)*u, y0+(y1-y0)*u); ctx.stroke();
