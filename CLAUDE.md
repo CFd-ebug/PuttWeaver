@@ -46,7 +46,8 @@ src/js/               engine code, concatenated in filename order into one scrip
   60-input.js           mouse, touch, keyboard
   70-panel.js           the right-hand panel (scorecard, options, rankings, export)
   80-live-core.js       live camera tracking: detection, movement guard, shot state machine
-  90-live-ui.js         calibration, color sampling, camera, FPS overlay, tracking panel, projector corner fit
+  85-keystone.js        projection angles (keystone), fitting the picture to the sheet (maths and sheet finder), calibration re-mapping
+  90-live-ui.js         calibration, Fit to the sheet, color sampling, camera, FPS overlay, tracking panel, projector corner fit
   95-remote-host.js     the Host side of the console: pairing dialog, state publisher, command table
   96-remote-shots.js    the Host records each shot (path, picture) and the play statistics for the console; Evaluators never count
   97-flow.js            what the players see: banners 1-3, the "Pick your game" screen between games, Putt now timing
