@@ -63,6 +63,10 @@ const REMOTE_CMDS = {
   pin(a){ if (!LIVE.fitting) throw new Error('Corner adjusting is not on'); const i = Number(a && a.i); if (!(i >= 0 && i < 4)) throw new Error('No such corner'); setPinCorner(i, Number(a.x), Number(a.y)); },
   pinrot(){ rotatePin(); },
   pinreset(){ resetPin(); },
+  ks(a){ remoteTaskCheck(); setKs(a && a.axis, a && a.v); },                                  // one projection angle, in degrees: v top/bottom, h left/right, r turn
+  ksreset(){ remoteTaskCheck(); resetKs(); },
+  autofit(){ if (!LIVE.src) throw new Error('Start the camera first'); remoteTask('Fitting the projection to the sheet', runAutoFit); },
+  sheet(a){ remoteTaskCheck(); setSheetCorners(a && a.pts ? a.pts : null); },                 // the sheet's four corners, tapped on the camera picture (fractions)
   // debug: overlays, tuning, camera controls and the report
   opt(a){ remoteOption(a && a.k, a && a.v); },
   tune(a){
@@ -107,9 +111,11 @@ function remoteSetup(){
     src: LIVE.src || '', label: LIVE.label || '', res: st.width ? st.width + '×' + st.height : '', lock: LIVE.lockNote || '',
     cal: c ? {n: c.n, of: c.of, avg: r3(c.checkAvg != null ? c.checkAvg : c.fitAvg), max: c.checkMax != null ? r3(c.checkMax) : null} : null,
     pin: LIVE.pin ? LIVE.pin.map(p => [r3(p[0]), r3(p[1])]) : null, fit: !!LIVE.fitting,
+    ks: {v: LIVE.ks.v, h: LIVE.ks.h, r: LIVE.ks.r}, sheet: LIVE.sheet ? LIVE.sheet.map(p => [r3(p[0]), r3(p[1])]) : null, sheetHand: !!LIVE.sheetHand,
+    fitErr: LIVE.fitInfo ? LIVE.fitInfo.err : null,
     method: LIVE.method, sampled: !!(LIVE.method === 'ref' ? LIVE.sig.sampled : LIVE.color.sampled), lat: Math.round(LIVE.latency * 1000),
     task: REMOTE.task || (LIVE.calib ? 'Working on the Host' : ''),
-    notes: {cam: note('lpCamNote'), cal: note('lpCalNote'), color: note('lpColorNote')},
+    notes: {cam: note('lpCamNote'), cal: note('lpCalNote'), color: note('lpColorNote'), fit: note('lpFitNote')},
     quad, det: b && LIVE.pw ? [r3(b.px / LIVE.pw), r3(b.py / LIVE.ph)] : null, log: LIVE.log.slice(-4).map(e => e.msg)
   };
 }

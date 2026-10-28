@@ -15,6 +15,8 @@ const suite = [
   { name: 'console: pairing, status, commands, reconnect', file: 'console-check.js', timeout: 240, ok: [NO_ERRORS] },
   { name: 'console: dashboard, shot replays, play statistics', file: 'dashboard-check.js', timeout: 240, ok: [NO_ERRORS] },
   { name: 'console: fits a 2960x1848 tablet without scrolling', file: 'tablet-check.js', timeout: 300, ok: [NO_ERRORS] },
+  { name: 'projection: angles, fit to the sheet, steep camera', file: 'keystone-check.js', timeout: 500, ok: [NO_ERRORS] },
+  { name: 'console: projection angles and fit to the sheet', file: 'keystone-console-check.js', timeout: 400, ok: [NO_ERRORS] },
   { name: 'console: game picker and games shown', file: 'picker-check.js', timeout: 240, ok: [NO_ERRORS] },
   { name: 'console: refused shot saves are reported', file: 'save-check.js', timeout: 240, ok: [NO_ERRORS] },
   { name: 'projector: banners and Pick your game', file: 'flow-check.js', timeout: 240, ok: [NO_ERRORS] },
