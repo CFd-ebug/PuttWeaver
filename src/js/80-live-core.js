@@ -10,7 +10,7 @@ const LIVE = {
   color:{h:72, dh:20, s:0.42, v:0.42, sampled:false},
   rest:{t:0.6, r:0.6}, clearT:1.5, startZone:'tee', latency:0.1,
   state:'off', det:null, detT:-9, hist:[], cand:[], samples:[], prev:null, miss:0, lastSeen:-9, resultAt:0,
-  pin:null, fitting:false, calib:null, flash:null, dbg:false, dbgCorner:'tr', mark:true, panel:false,
+  pin:null, pinBase:null, ks:{v:0,h:0,r:0}, sheet:null, sheetHand:false, fitInfo:null, fitting:false, calib:null, flash:null, dbg:false, dbgCorner:'tr', mark:true, panel:false,
   waiters:[], log:[], stats:{frames:0, hits:0, hitWin:[], weak:0, restStarts:0, moveStarts:0}, sweep:null, devId:'', res:1280, lockNote:'',
   readyAt:0, bg:[], bgLogged:false,
   // "compare to the empty sheet": each round starts by photographing the sheet with nothing on it (ref), then looks for
@@ -22,12 +22,14 @@ const LIVE = {
   // frame-rate overlay
   fpsHud:false, camTimes:[], rafTimes:[], seenWin:[], frameMs:0, hud:null, hudAt:0
 };
-const LIVE_KEYS = ['color','rest','clearT','startZone','latency','pin','devId','res','pwTarget','dbgCorner','method','sig','busyThr','fpsHud'];
+const LIVE_KEYS = ['color','rest','clearT','startZone','latency','pin','pinBase','ks','devId','res','pwTarget','dbgCorner','method','sig','busyThr','fpsHud'];
 function liveLoad(){
   try {
     const s = JSON.parse(localStorage.getItem('putt-lab-live') || '{}');
     for (const k of LIVE_KEYS) if (s[k] != null) LIVE[k] = s[k];
-    if (s.cal && s.cal.Hcs) setCal(s.cal, true);
+    if (!LIVE.ks || typeof LIVE.ks !== 'object') LIVE.ks = {v:0, h:0, r:0};
+    if (LIVE.pin && !LIVE.pinBase && !(LIVE.ks.v || LIVE.ks.h || LIVE.ks.r)) LIVE.pinBase = LIVE.pin.map(q => [q[0], q[1]]);
+    if (s.cal && s.cal.Hcs){ if (!s.cal.Hcs0){ s.cal.Hcs0 = s.cal.Hcs.slice(); s.cal.pinAt = LIVE.pin ? LIVE.pin.map(q => [q[0], q[1]]) : null; } setCal(s.cal, true); }
   } catch (e) {}
 }
 function liveSave(){
@@ -112,7 +114,7 @@ function sheetRectFrac(){ // where the sheet sits on the unwarped screen canvas,
   return {x0:(0-view.ox)/sw, y0:(0-view.oy)/sh, x1:(W-view.ox)/sw, y1:(D-view.oy)/sh};
 }
 function sheetCornersFrac(){ const r = sheetRectFrac(); return [[r.x0,r.y0],[r.x1,r.y0],[r.x1,r.y1],[r.x0,r.y1]]; }
-const pinActive = () => proj && !!LIVE.pin;
+const pinActive = () => proj && !!LIVE.pin && !(LIVE.calib && LIVE.calib.noPin);
 function pinMatrix(){ // output screen fraction -> source canvas fraction
   return homFit(LIVE.pin, sheetCornersFrac());
 }
@@ -131,14 +133,33 @@ function simRender(){
   if (!simCam.warper) return false;
   const src = pinActive() ? warpCanvas : cvs;
   const H = homFit(simCam.quad, [[0,0],[1,0],[1,1],[0,1]]);
+  /*SIM*/if (simCam.sheet) return simRenderSheet(src, H);/*/SIM*/
+  simCam.view = null;
   simCam.warper.draw(src, H, [0.16, 0.15, 0.14], simCam.noise || 0);
   return true;
 }
 
+/*SIM*/
+// Desk test of the automatic fit: a physical white sheet (simCam.sheet, four corners as fractions of the camera picture) lies on a dark floor,
+// lit a little by the room and, where the projector reaches, by the picture. The projector's light comes back from the sheet far better than from the floor.
+function simRenderSheet(src, H){
+  const w = 960, h = 540;
+  if (!simCam.glc){ simCam.glc = document.createElement('canvas'); simCam.glc.width = w; simCam.glc.height = h; simCam.glw = makeWarper(simCam.glc); simCam.out = document.createElement('canvas'); simCam.out.width = w; simCam.out.height = h; }
+  if (!simCam.glw) return false;
+  simCam.glw.draw(src, H, [0, 0, 0], simCam.noise || 0);
+  const g = simCam.out.getContext('2d'), poly = () => { g.beginPath(); simCam.sheet.forEach(([u, v], k) => k ? g.lineTo(u*w, v*h) : g.moveTo(u*w, v*h)); g.closePath(); };
+  g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; g.fillStyle = 'rgb(30,30,28)'; g.fillRect(0, 0, w, h);
+  g.fillStyle = 'rgb(78,78,74)'; poly(); g.fill();
+  g.globalCompositeOperation = 'lighter'; g.globalAlpha = 0.2; g.drawImage(simCam.glc, 0, 0);
+  g.save(); poly(); g.clip(); g.globalAlpha = 0.8; g.drawImage(simCam.glc, 0, 0); g.restore();
+  simCam.view = simCam.out; return true;
+}
+/*/SIM*/
+
 // ---- frame sources ----
-function srcEl(){ return LIVE.src === 'sim' ? simCam.canvas : LIVE.video; }
+function srcEl(){ return LIVE.src === 'sim' ? (simCam.view || simCam.canvas) : LIVE.video; }
 function srcSize(){
-  if (LIVE.src === 'sim') return simCam.canvas ? [simCam.canvas.width, simCam.canvas.height] : [0,0];
+  if (LIVE.src === 'sim'){ const c = simCam.view || simCam.canvas; return c ? [c.width, c.height] : [0,0]; }
   const v = LIVE.video; return v && v.readyState >= 2 ? [v.videoWidth, v.videoHeight] : [0,0];
 }
 function watchVideoFrames(){
@@ -348,7 +369,7 @@ function detectBall(){
   const res = {t:state.clock, count, blobs:[], best:null, note:'', weak:false, ref};
   if (count > limit) res.note = ref ? 'too much of the sheet changed (someone on it, or the camera moved)' : 'too many pixels match the ball color';
   else {
-    res.blobs = blobsIn(LIVE.roi); res.best = chooseBlob(res.blobs, {lo:rolling ? 0.15 : 0.25, hi:4, ignore, shape:!rolling, near:last, maxDist});
+    res.blobs = flowClip(blobsIn(LIVE.roi)); res.best = chooseBlob(res.blobs, {lo:rolling ? 0.15 : 0.25, hi:4, ignore, shape:!rolling, near:last, maxDist});
     if (!res.best && res.blobs.length) res.note = res.blobs.some(b => b.ignored) ? 'only spots that were already on the sheet' : res.blobs.some(b => b.far) ? 'only spots too far from the rolling ball' : res.blobs.some(b => b.shapeBad) ? 'only odd-shaped spots' : 'matches found, but none are ball-sized';
   }
   // A rolling ball smears during each camera frame, which washes out its color. Take a looser second look near where it was,
@@ -358,7 +379,7 @@ function detectBall(){
   else if (!res.best && ref && st === 'ready' && !LIVE.busy){ R2 = roiRect(0, D-1.2, W, D); o2 = {lo:0.25, hi:5, shape:true, minFill:0.45}; }
   if (R2){
     const n2 = ref ? maskPassRef(R2, rolling ? 'near' : 'band') : maskPass({h:C.h, dh:Math.min(60, C.dh*1.6), s:C.s*0.6, v:C.v*0.7}, R2);
-    if (n2 && n2 < limit/2){ const bl = blobsIn(R2), b2 = chooseBlob(bl, o2); if (b2){ res.best = b2; res.blobs = bl; res.weak = true; LIVE.stats.weak++; } }
+    if (n2 && n2 < limit/2){ const bl = flowClip(blobsIn(R2)), b2 = chooseBlob(bl, o2); if (b2){ res.best = b2; res.blobs = bl; res.weak = true; LIVE.stats.weak++; } }
   }
   LIVE.procMs = performance.now()-t0;
   return res;
@@ -518,7 +539,7 @@ function liveStep(b){
 // Each round starts by waiting for a still sheet, then (comparing to the empty sheet) takes its photo of it.
 function armReady(){
   LIVE.state = 'arming'; LIVE.armAt = state.clock; LIVE.cand = []; LIVE.hist = []; LIVE.armTrack = []; LIVE.armNote = false;
-  LIVE.refWant = 0; LIVE.refAcc = null; LIVE.refN = 0; LIVE.refForce = false;
+  LIVE.refWant = 0; LIVE.refAcc = null; LIVE.refN = 0; LIVE.refForce = false; LIVE.refHideAt = 0;
 }
 function goReady(keepRef){
   if (keepRef){ LIVE.refWant = 0; LIVE.refAcc = null; LIVE.refN = 0; }
@@ -531,6 +552,10 @@ function armTick(){
   if (LIVE.method !== 'ref'){ if (calm || since > 6) goReady(); return; }
   if (LIVE.refAt > LIVE.armAt && !LIVE.refWant){ goReady(); return; }
   if (!LIVE.refWant && (calm || since > 6)){
+    if (flowOn()){                                                  // the players' banner comes off the sheet before the empty-sheet photo
+      if (!LIVE.refHideAt) LIVE.refHideAt = state.clock;
+      if (state.clock - LIVE.refHideAt < LIVE.latency + 0.3) return;
+    }
     if (!calm && !LIVE.armNote){ LIVE.armNote = true; llog(`The sheet never looked still (${(LIVE.motion*100).toFixed(1)}% changing, usual ${(LIVE.floor*100).toFixed(1)}%). Took the empty-sheet photo anyway. If this repeats, raise Movement guard.`); }
     LIVE.refForce = !calm; LIVE.refWant = 3; LIVE.refAcc = null; LIVE.refN = 0;
   }
@@ -565,7 +590,8 @@ function liveTick(){
   if (!LIVE.src) return;
   if (LIVE.src === 'sim'){ const now = performance.now(); if (proj && now - simCam.last > 33){ simCam.last = now; if (simRender()){ LIVE.newFrame = true; noteCamFrame(); } } }
   if (LIVE.newFrame){ LIVE.newFrame = false; processFrame(); }
-  if (!LIVE.on) return;
+  if (!LIVE.on){ if (FLOW.phase !== 'play') flowReset(); return; }          // tracking stopped while the players were being asked something
+  if (FLOW.phase !== 'play'){ flowTick(); return; }               // the players are picking the next game on the controller
   if (LIVE.state === 'stopped' && (mode === 'result' || mode === 'over')){ LIVE.state = 'collect'; LIVE.resultAt = state.clock; }
   if (LIVE.state === 'arming'){ if (mode === 'aim') armTick(); else { LIVE.state = 'collect'; LIVE.resultAt = state.clock - 2.5; } }
   if (LIVE.state === 'collect'){
@@ -575,7 +601,7 @@ function liveTick(){
     const still = state.clock - LIVE.busyAt > 0.8 || gone > LIVE.clearT + 6;
     if (state.clock - LIVE.resultAt > 2.5 && gone > LIVE.clearT && still){
       if (mode === 'result'){ advance(); if (mode === 'over'){ LIVE.resultAt = state.clock; llog('Hole complete'); } }
-      else if (mode === 'over' && state.clock - LIVE.resultAt > 6){ startGame(); llog('New game'); }
+      else if (mode === 'over' && state.clock - LIVE.resultAt > 6){ if (flowCanSelect()) flowAfterHole(); else { startGame(); llog('New game'); } }
       if (mode === 'aim'){ armReady(); llog('Sheet clear; setting up the next round'); }
     }
   }

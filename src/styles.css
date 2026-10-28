@@ -345,8 +345,8 @@ body.role-manage{color-scheme:light;background:#fff;color:#0a0a0a;font-family:"I
 .role-manage .mgr-tab{border-radius:0;font-weight:700;border:.1875em solid #0a0a0a;border-bottom:0}
 .role-manage .mgr-tab[aria-selected="true"]{background:#0a0a0a;color:#fff}
 .dash{display:grid;gap:1.25em;grid-template-columns:1fr}
-@media (min-width:1100px){.dash{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);align-items:start}}
-.dash-main,.dash-side{display:grid;gap:1.25em;min-width:0;align-content:start}
+.dash-a,.dash-b,.dash-c{display:grid;gap:1.25em;min-width:0;align-content:start}
+@media (min-width:1100px){.dash{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);align-items:start}.dash-a{grid-column:1;grid-row:1}.dash-b{grid-column:1;grid-row:2}.dash-c{grid-column:2;grid-row:1 / span 2}}
 .d-now h2{font-size:6.5em;line-height:.95;margin:0 0 .15em}
 .d-now .mgr-status{font-size:2em;font-weight:700;letter-spacing:-.03em;margin:0}
 .d-hint{margin:.4em 0 0;font-size:1.5em;color:#555;line-height:1.3}
@@ -376,14 +376,14 @@ body.role-manage{color-scheme:light;background:#fff;color:#0a0a0a;font-family:"I
 .d-pst.hard .d-meter i{background:#e5002b}.d-pst.mid .d-meter i{background:#0a0a0a}
 .d-ctl .mgr-btns{grid-template-columns:repeat(auto-fit,minmax(11em,1fr));gap:.9em}
 .d-thd{display:flex;justify-content:space-between;align-items:center;gap:1em}
-.sw{display:flex;gap:.4em}.sw button{border:.125em solid #0a0a0a;background:#fff;font:600 1.1em/1 "IBM Plex Mono",monospace;padding:.5em .7em;min-width:3em;border-radius:0}.sw button.on{background:#0a0a0a;color:#fff}
+.d-sw{display:flex;gap:.4em}.d-sw button{border:.125em solid #0a0a0a;background:#fff;font:600 1.1em/1 "IBM Plex Mono",monospace;padding:.5em .7em;min-width:3em;border-radius:0}.d-sw button.on{background:#0a0a0a;color:#fff}
 .d-replay canvas,.d-world canvas{display:block;width:100%;height:auto;border:.1875em solid #0a0a0a;background:#eef0f7}
 .rep-ctl{display:flex;justify-content:space-between;align-items:center;margin-top:.7em;font-size:1.1em}
 .d-spd{display:inline-flex}.d-spd button{border:.125em solid #0a0a0a;background:#fff;font:700 1.5em/1 "Inter",sans-serif;padding:.5em .8em;border-radius:0}.d-spd button[aria-pressed="true"]{background:#0a0a0a;color:#fff}
 .d-key{margin:.6em 0 0;font:500 1em/1.3 "IBM Plex Mono",monospace;color:#555}.d-key .easy{color:#1a3cff}.d-key .mid{color:#0a0a0a}.d-key .hard{color:#e5002b}
 .role-manage .mgr-map canvas{border:.1875em solid #0a0a0a;border-radius:0}
 
-body.role-manage .app{max-width:none}
+body.role-manage .app{max-width:none;width:100%}
 
 /* Game picker overlay and Setup "Games shown" (Manager). Sizes in em, like the dashboard. */
 .gk-ov{position:fixed;left:0;top:0;right:0;bottom:0;z-index:60;background:rgba(10,10,10,.66);display:flex;align-items:flex-start;justify-content:center;padding:2.5em 3.5em;overflow:auto;font-size:14px}
@@ -429,3 +429,184 @@ body.role-manage .app{max-width:none}
 .gs-k.on{background:#1a3cff;color:#fff;border-color:#1a3cff;box-shadow:0 .375em 0 #0a0a0a}.gs-k.on2{background:#0a0a0a;color:#fff}
 .gs-k:active{transform:translateY(.25em);box-shadow:0 .125em 0 #0a0a0a}
 @media (max-width:1099px){.gs-list{grid-template-columns:1fr;grid-auto-flow:row;grid-template-rows:none}.gs-th{width:6em}.gs-nm b{font-size:1.5em}}
+
+.gk-top{display:grid;grid-template-columns:minmax(0,1fr) 40em;gap:1.75em}
+.gk-left{display:flex;flex-direction:column;gap:1.25em;min-width:0}
+.gk-head{display:flex;align-items:center;justify-content:space-between;gap:1em;flex-wrap:wrap}
+.gk-pj{display:flex;flex-direction:column;justify-content:center;min-width:25em;height:5.5em;padding:0 1.6em;border:.1875em solid #0a0a0a;background:#fff}
+.gk-lab{font:500 1.06em/1 "IBM Plex Mono",monospace;letter-spacing:.1em;text-transform:uppercase;color:#555;margin-bottom:.4em}
+.gk-pj b{font:800 2.1em/1 "Inter",sans-serif;letter-spacing:-.04em}
+.gk-how{display:flex;align-items:center;justify-content:space-between;padding:0 0 .6em}
+.gk-hc{flex:1;min-width:0;border:.1875em solid #0a0a0a;box-shadow:0 .5em 0 #0a0a0a;background:#fff;opacity:.38}
+.gk-hc canvas{display:block;width:100%;aspect-ratio:1920/1240;height:auto}
+.gk-ar{flex:none;width:2.75em;display:flex;justify-content:center;color:#0a0a0a}.gk-ar svg{width:2.4em;height:2.4em}
+.gk-person{border:.1875em solid #0a0a0a;background:#f3f4f9;align-self:start}
+.gk-person canvas{display:block;width:100%;aspect-ratio:640/492;height:auto}
+.gk-card h2{font-size:6.5em}
+@media (max-width:1099px){.gk-top{grid-template-columns:1fr}.gk-card h2{font-size:2.6em}.gk-pj{min-width:0;height:4em}.gk-ar{width:1.2em}.gk-ar svg{width:1.1em;height:1.1em}.gk-person{max-width:32em}}
+
+/* Setup: players' screen, statistics, usage */
+.ps-wrap{grid-column:1 / -1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.2em;align-items:start}.ps-wrap #mgrPlayCard{grid-column:1 / -1}
+@media (max-width:1099px){.ps-wrap{grid-template-columns:1fr}}
+.ps-row{display:flex;align-items:center;justify-content:space-between;gap:1.5em;padding:1em 0;border-bottom:.09em solid #c9c9c9}
+.ps-row:last-child{border-bottom:0}
+.ps-txt{min-width:0}.ps-txt b{display:block;font-size:2em;font-weight:700;letter-spacing:-.03em}.ps-txt span{display:block;margin-top:.35em;font-size:1.2em;line-height:1.35;color:#555}
+.ps-step{flex:none;display:flex;align-items:center;gap:.8em}
+.ps-step .btn.key.small{margin:0 0 .3em;min-width:3.2em}
+.ps-step output{min-width:5.6em;text-align:center;font:600 1.9em/1 "IBM Plex Mono",monospace}
+.ps-btns{display:flex;gap:.8em;flex-wrap:wrap;margin:.6em 0}
+.ps-sure{margin:.6em 0;padding:1em 1.2em;border:.1875em solid #e5002b;background:#fff}
+.ps-sure b{display:block;font-size:2em;font-weight:800;letter-spacing:-.03em;color:#e5002b}.ps-sure span{display:block;margin:.4em 0 .2em;font-size:1.25em;line-height:1.35}
+.btn.ps-yes{background:#e5002b;border-color:#e5002b;color:#fff;box-shadow:0 .375em 0 #0a0a0a}
+.ps-use{display:flex;align-items:center;gap:1.2em;margin:.4em 0 .6em}
+.ps-use b{flex:none;min-width:3.4em;font-size:2.8em;font-weight:600}
+.ps-bar{position:relative;flex:1;height:1.6em;border:.1875em solid #0a0a0a;background:#fff}
+.ps-bar i{position:absolute;left:0;top:0;bottom:0;background:#1a3cff}
+.ps-mark{position:absolute;left:70%;top:-.4em;bottom:-.4em;width:.1875em;background:#0a0a0a}
+#mgrUseCard.hot .ps-bar i{background:#e5002b}#mgrUseCard.hot .ps-use b{color:#e5002b}
+.ps-warn{margin:.4em 0 0;padding:.8em 1em;border:.1875em solid #e5002b;color:#e5002b;font-size:1.25em;font-weight:700;line-height:1.35}
+.mgr-warn{font-weight:700;color:#e5002b;border:.125em solid #e5002b;padding:.1em .6em}
+@media (max-width:1099px){.ps-row{flex-direction:column;align-items:flex-start}.ps-txt b{font-size:1.5em}.ps-use b{font-size:2em}}
+
+/* ===== Swiss Pop Light (shared components) =====
+   Switched on with the class "sw" on <body> (05-role.js, SW_ROLES). White page, black ink, 3 px black outlines, no rounded corners,
+   blue for "on" and "go", red for "no". Buttons are keys with a hard shadow. Sizes are in em so a page scales from its own font-size
+   (--sw-fs): the Manager console sets it from the screen width, the other pages use a fixed size. */
+body.sw{color-scheme:light;--bw:.1875em;--sw-ink:#0a0a0a;--sw-blue:#1a3cff;--sw-red:#e5002b;--sw-fs:15px;
+  --bg:#fff;--surface:#fff;--sunk:#f1f3f7;--ink:#0a0a0a;--muted:#555;--line:#c9c9c9;--accent:#1a3cff;--accent-ink:#fff;--flag:#e5002b;--good:#1a3cff;
+  background:#fff;color:#0a0a0a;font-family:"Inter","Atkinson Hyperlegible",system-ui,sans-serif;font-size:var(--sw-fs)}
+body.role-manage.sw{--sw-fs:14px}
+@media (min-width:1100px){body.role-manage.sw{--sw-fs:calc(100vw / 160)}}
+.sw .app{font-size:var(--sw-fs)}
+.sw .brand{gap:.8em}
+.sw h1{font:800 2.1em/1 "Inter",sans-serif;letter-spacing:-.05em;text-transform:uppercase}
+.sw .brand p{margin:.3em 0 0;font:500 .8em/1.2 "IBM Plex Mono",monospace;letter-spacing:.08em;text-transform:uppercase;color:#555}
+.sw .mark{width:2.6em;height:2.1em;border-radius:0;border:var(--bw) solid #0a0a0a;background:#fff}
+.sw .mark::after{width:.7em;height:.7em;background:#1a3cff;border:0;left:1.4em;top:.4em}
+.sw .mark::before{height:.15em;background:#e5002b;left:.35em;right:.35em;bottom:.35em}
+.sw .card{border:var(--bw) solid #0a0a0a;border-radius:0;background:#fff;box-shadow:none;padding:1em 1.25em}
+.sw .eyebrow{font:500 .85em/1 "IBM Plex Mono",monospace;letter-spacing:.1em;text-transform:uppercase;color:#555}
+.sw .help{font-size:.85em;color:#555}
+.sw .btn:not(.key){border:var(--bw) solid #0a0a0a;border-radius:0;background:#fff;color:#0a0a0a;font:700 1em/1.1 "Inter",sans-serif;letter-spacing:-.02em;padding:.5em .85em;box-shadow:0 .25em 0 #0a0a0a;margin-bottom:.25em}
+.sw .btn:not(.key):hover{border-color:#0a0a0a;background:#f1f3f7}
+.sw .btn:not(.key):active{transform:translateY(.2em);box-shadow:0 .05em 0 #0a0a0a}
+.sw .btn.primary:not(.key){background:#1a3cff;border-color:#1a3cff;color:#fff;box-shadow:0 .25em 0 #0a0a0a}
+.sw .btn.primary:not(.key):hover{background:#1a3cff}
+.sw .btn.small:not(.key){font-size:.9em;padding:.4em .7em}
+.sw .btn:disabled{opacity:.4;pointer-events:none}
+:is(.sw .btn,.sw summary,.sw select,.sw input,.sw textarea,.sw .chip,.sw .role-opt):focus-visible{outline:.19em solid #1a3cff;outline-offset:.19em}
+.sw input[type=text],.sw textarea,.sw select{border:var(--bw) solid #0a0a0a;border-radius:0;background:#fff;color:#0a0a0a;font-size:1em;padding:.45em .6em}
+.sw textarea{font:400 .8em/1.45 "IBM Plex Mono",monospace;background:#f1f3f7}
+.sw select{appearance:none;padding-right:2.2em;font-weight:700;background:#fff linear-gradient(45deg,transparent 50%,#0a0a0a 50%) calc(100% - 1.15em) 55%/.5em .5em no-repeat,linear-gradient(135deg,#0a0a0a 50%,transparent 50%) calc(100% - .8em) 55%/.5em .5em no-repeat}
+.sw .check{font-size:1em;gap:.6em}
+.sw .check input{appearance:none;width:1.25em;height:1.25em;border:var(--bw) solid #0a0a0a;border-radius:0;background:#fff;margin:0;flex:none;cursor:pointer}
+.sw .check input{display:inline-grid;place-items:center}
+.sw .check input:checked{background:#1a3cff;border-color:#0a0a0a}
+.sw .check input:checked::after{content:"";width:.3em;height:.6em;margin-top:-.12em;border:solid #fff;border-width:0 .17em .17em 0;transform:rotate(45deg)}
+.sw input[type=range]{appearance:none;height:1.4em;background:transparent;cursor:pointer;accent-color:#1a3cff}
+.sw input[type=range]::-webkit-slider-runnable-track{height:.3em;background:#0a0a0a}
+.sw input[type=range]::-moz-range-track{height:.3em;background:#0a0a0a}
+.sw input[type=range]::-webkit-slider-thumb{appearance:none;width:1.1em;height:1.4em;margin-top:-.55em;background:#1a3cff;border:var(--bw) solid #0a0a0a;border-radius:0}
+.sw input[type=range]::-moz-range-thumb{width:.8em;height:1.1em;background:#1a3cff;border:var(--bw) solid #0a0a0a;border-radius:0}
+.sw dialog.dlg{font-size:var(--sw-fs);border:var(--bw) solid #0a0a0a;border-radius:0;background:#fff;color:#0a0a0a;padding:1.2em 1.4em 1.4em;width:min(36em,calc(100vw - 2em));box-shadow:0 .5em 0 #0a0a0a}
+.sw dialog.dlg::backdrop{background:rgba(10,10,10,.6)}
+.sw .dlg-head{margin-bottom:1em}
+.sw .dlg-head h2{font:800 1.9em/1 "Inter",sans-serif;letter-spacing:-.05em;margin:0}
+.sw .dlg-foot{margin-top:1em}
+.sw .pair-body canvas{border:var(--bw) solid #0a0a0a;border-radius:0;width:min(14em,70vw)}
+.sw .pair-code{font:600 2.4em/1 "IBM Plex Mono",monospace;letter-spacing:.1em}
+.sw .role-opt{border:var(--bw) solid #0a0a0a;border-radius:0;background:#fff;padding:.8em 1em;box-shadow:0 .25em 0 #0a0a0a;margin-bottom:.25em;font-size:1em}
+.sw .role-opt b{font:800 1.3em/1.1 "Inter",sans-serif;letter-spacing:-.03em}
+.sw .role-opt span{font-size:.95em;color:#555}
+.sw .role-opt:hover{background:#f1f3f7;border-color:#0a0a0a}
+.sw .role-opt[aria-current="true"]{background:#1a3cff;color:#fff;box-shadow:0 .25em 0 #0a0a0a}.sw .role-opt[aria-current="true"] span{color:#fff;opacity:.9}
+.sw .role-bar{font:500 .85em/1.2 "IBM Plex Mono",monospace;letter-spacing:.04em;color:#555}
+.sw .role-bar b{color:#0a0a0a}
+.sw .mgr-foot{gap:.8em;padding-top:.4em}
+/* Manager: join screen and Debug tab */
+.role-manage .mgr-code{gap:.8em}
+.role-manage .mgr-code input{font:600 2.2em/1.1 "IBM Plex Mono",monospace;letter-spacing:.14em;border:var(--bw) solid #0a0a0a;border-radius:0;padding:.3em .5em;min-width:0}
+.role-manage #mgrJoin h2{font-size:2.4em;margin:0 0 .3em}.role-manage #mgrJoin p{font-size:1.2em}
+.role-manage #mgrJoin .btn.primary{font-size:1.5em;padding:.5em 1.2em}
+.role-manage .mgr-kv{font-size:1.15em;gap:.3em 1em}.role-manage .mgr-kv dt{color:#555}.role-manage .mgr-kv dd{font-family:"IBM Plex Mono",monospace;font-weight:600}
+.role-manage .mgr-kv dd[data-s="bad"]{color:#e5002b}.role-manage .mgr-kv dd[data-s="warn"]{color:#e5002b;text-decoration:underline}
+.role-manage .mgr-opts{gap:.6em 1.4em;margin:.6em 0;font-size:1.15em}
+.role-manage .mgr-sel{font-size:1.05em;color:#555;gap:.25em}.role-manage .mgr-sel select{font:700 1.1em "Inter",sans-serif;padding:.4em 2.2em .4em .6em}
+.role-manage .mgr-sliders{gap:.7em}
+.role-manage .mgr-sl{font-size:1.15em;gap:.7em}.role-manage .mgr-sl b{font:600 .95em "IBM Plex Mono",monospace}
+.role-manage .mgr-log{font-size:.95em}
+.role-manage .mgr-logcard textarea{font-size:.9em}
+.role-manage .mgr-prev canvas,.role-manage .mgr-fit canvas{border:var(--bw) solid #0a0a0a;border-radius:0}
+.role-manage .mgr-lock{font:700 1em/1.2 "Inter",sans-serif;border:var(--bw) dashed #0a0a0a;border-radius:0;color:#0a0a0a;padding:.45em .9em}
+.role-manage .mgr-lock[data-s="open"]{border-style:solid;background:#1a3cff;color:#fff;border-color:#1a3cff}
+.role-manage .mgr-lockfill{background:#1a3cff;opacity:.35}
+
+/* ===== Manager on a wide tablet (about 16:10, e.g. 2960 x 1848): everything fits one screen, no scrolling =====
+   The page is a canvas of 160 em x 100 em (the font size is the smaller of width/160 and height/100). Run and Setup are three columns.
+   If something ever needs more room than that, the page simply scrolls, as it does on a narrower screen. */
+@media (min-width:1100px) and (min-aspect-ratio:7/5){
+  body.role-manage.sw{--sw-fs:min(100vw / 160, 100vh / 100);padding:.5em 1em .4em}
+  .role-manage [hidden]{display:none!important}
+  body.role-manage .app{min-height:calc(100vh - .9em);gap:.5em}
+  .role-manage .mgr{font-size:var(--sw-fs);padding:0;flex:1;display:flex;flex-direction:column;gap:.5em;min-height:0}
+  .role-manage .mgr-run{flex:1;display:flex;flex-direction:column;min-height:0}
+  .role-manage .mgr-strip{padding:.4em 0;margin-bottom:.5em}
+  .role-manage .mgr-tabs{margin-bottom:0}
+  .role-manage .mgr-foot{margin-top:auto;padding-top:.3em}
+  .role-manage .sw .role-bar,.sw .role-bar{padding-top:0}
+  .role-manage #mgrTabRun,.role-manage #mgrTabSetup,.role-manage #mgrTabDebug{flex:1;min-height:0;margin-top:0}
+  .role-manage .card{padding:.8em 1.1em}
+
+  /* Run: A now playing + score + controls, B this hole + ball, C replay + map */
+  .role-manage .dash{grid-template-columns:repeat(3,minmax(0,1fr));gap:1.1em;align-items:stretch}
+  .role-manage .dash-a,.role-manage .dash-b,.role-manage .dash-c{display:flex;flex-direction:column;gap:1.1em;min-height:0;grid-column:auto;grid-row:auto}
+  .role-manage .d-now{flex:1}
+  .d-now h2{font-size:5.6em;overflow-wrap:anywhere}
+  .d-now .mgr-status{font-size:2.2em}
+  .d-hint{font-size:1.6em}
+  .role-manage .d-now .mgr-result b{font-size:2.2em}.role-manage .d-now .mgr-result span{font-size:1.5em}.role-manage .d-now .mgr-hole{font-size:1.3em}
+  .role-manage .d-ctl .mgr-btns{grid-template-columns:repeat(4,minmax(0,1fr));gap:.7em}
+  .role-manage .d-ctl .btn.key{font-size:1.45em;min-height:3.6em;padding:.4em .4em}
+  .role-manage .d-shots{flex:1;min-height:0;display:flex;flex-direction:column}
+  .role-manage .d-shots-list{overflow:auto;min-height:0;gap:.6em}
+  .d-shot{padding:.5em .7em;gap:.1em .8em}
+  .d-shot .no{font-size:1.3em;padding:.4em .5em}
+  .d-shot .sb b{font-size:1.65em}.d-shot .sb span{font-size:1.1em;margin-top:.1em}
+  .d-pst{padding-top:.35em;gap:.3em;grid-template-columns:auto 1fr;align-items:center;column-gap:.7em}
+  .d-pst .lab{grid-column:1 / -1}.d-pst b{font-size:1.7em;margin-right:.3em}.d-meter{grid-column:1 / -1;height:.5em}
+  .role-manage .d-world{flex:1}
+  .role-manage .d-ladder{padding-bottom:.6em}
+  .d-pip{font-size:3.4em}
+  .d-dist{height:6em}
+
+  /* Setup: checklist | games (two columns of five) over camera, players' screen, statistics and usage */
+  .role-manage #mgrTabSetup{display:grid;grid-template-columns:minmax(0,1.3fr) repeat(2,minmax(0,1fr));gap:1.1em;align-content:start;align-items:start}
+  .role-manage #mgrTabSetup .mgr-check{grid-column:1;grid-row:1 / span 4}
+  .role-manage #mgrTabSetup .gs-card{grid-column:2 / 4;grid-row:1}
+  .role-manage #mgrTabSetup .mgr-prev,.role-manage #mgrTabSetup .mgr-fit{grid-column:2;grid-row:2 / span 3}
+  .role-manage #mgrTabSetup .ps-wrap{display:contents}
+  .role-manage #mgrTabSetup #mgrPlayCard{grid-column:3;grid-row:2}
+  .role-manage #mgrTabSetup #mgrStatCard{grid-column:3;grid-row:3}
+  .role-manage #mgrTabSetup #mgrUseCard{grid-column:3;grid-row:4}
+  .role-manage .mgr-prev:has(~ #mgrFitCard:not([hidden])){display:none}
+  .role-manage #mgrTabSetup .mgr-check{align-self:stretch}
+  .role-manage #mgrTabDebug{display:grid;align-content:start;align-items:start}
+  .role-manage .mgr-list{gap:.9em;margin-top:.5em;font-size:1.05em}
+  .role-manage #mgrSetupLog{display:none}
+  .role-manage .mgr-list .st{font-size:1em}.role-manage .mgr-list .note{font-size:.95em}
+  .role-manage .mgr-list .mgr-btns .btn{font-size:1em;padding:.6em .5em}
+  .role-manage .mgr-list .mgr-btns{grid-template-columns:repeat(auto-fit,minmax(9em,1fr));gap:.5em}
+  .role-manage .ks-grid{gap:.3em .8em;margin:.3em 0}
+  .gs-row{padding:.65em 0;gap:1em}.gs-th{width:7em}.gs-nm small{font-size:1em}.gs-nm b{font-size:1.7em;margin-top:.15em}
+  .gs-k{height:3em;min-width:4.2em;font-size:1.3em}
+  .gs-list{column-gap:2.5em}
+  .ps-row{padding:.6em 0}.ps-txt b{font-size:1.6em}.ps-txt span{font-size:1.05em}.ps-step output{font-size:1.6em;min-width:4.6em}
+}
+
+/* Setup: projection angles */
+.ks-grid{display:grid;grid-template-columns:auto 1fr;gap:.5em 1em;align-items:center;margin:.5em 0}
+.ks-n{font-weight:700}
+.ks-c{display:flex;align-items:center;gap:.4em;flex-wrap:wrap;justify-content:flex-end}
+.ks-c output{min-width:8.5em;text-align:center;font:600 .95em/1 "IBM Plex Mono",monospace}
+.ks-c .btn{min-width:2.6em}
+.ks-row{align-items:center}.ks-row .ks-n{flex:1 1 100%;font-weight:700}.ks-row output{min-width:7em;text-align:center;font:600 12px/1 var(--mono)}

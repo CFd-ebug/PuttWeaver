@@ -26,7 +26,7 @@ function pairSteps(ul, rows){          // test results as a list: dot, name, det
 function runManager(){
   const el = id => document.getElementById(id);
   const root = el('mgr'); root.hidden = false;
-  let room = '', myId = '', acks = {}, tab = 'run', pvStream = null, wantTimer = 0, pvImg = null, pvSeq = 0, fitPin = null, fitDrag = -1, fitTimer = 0, fitLast = -1, streams = [], pending = new Map(), timers = [], lastState = null, hostBeat = 0, relayLive = false, gamesKey = '', shownIds = [], shownHold = 0, pendTile = null, pendTimer = 0, addTimer = 0, statsData = {}, shotList = [], repSel = 0, repAuto = true, repSpd = 1, repT0 = 0, repRaf = 0, armed = null, armTimer = 0, worldImg = null;
+  let room = '', myId = '', acks = {}, tab = 'run', pvStream = null, wantTimer = 0, pvImg = null, pvSeq = 0, fitPin = null, fitDrag = -1, fitTimer = 0, fitLast = -1, streams = [], pending = new Map(), timers = [], lastState = null, hostBeat = 0, relayLive = false, gamesKey = '', lastPhase = '', howRaf = 0, howT0 = 0, shownIds = [], shownHold = 0, pendTile = null, pendTimer = 0, addTimer = 0, statsData = {}, shotList = [], repSel = 0, repAuto = true, repSpd = 1, repT0 = 0, repRaf = 0, armed = null, armTimer = 0, worldImg = null;
   const repImgs = new Map();
   const say = (id, msg) => { el(id).textContent = msg; };
 
@@ -72,7 +72,7 @@ function runManager(){
     timers.push(setInterval(beat, 5000), setInterval(strip, 2000));
     strip(); render();
   }
-  function stop(){ srKey = ''; stopPreview(); cancelAnimationFrame(repRaf); repRaf = 0; statsData = {}; shotList = []; repImgs.clear(); streams.forEach(s => s.close()); streams = []; timers.forEach(clearInterval); timers = []; pending.clear(); lastState = null; hostBeat = 0; relayLive = false; gamesKey = ''; pickClose(); }
+  function stop(){ srKey = ''; stopPreview(); cancelAnimationFrame(repRaf); repRaf = 0; statsData = {}; shotList = []; repImgs.clear(); streams.forEach(s => s.close()); streams = []; timers.forEach(clearInterval); timers = []; pending.clear(); lastState = null; hostBeat = 0; relayLive = false; gamesKey = ''; lastPhase = ''; pickClose(); }
   function showJoin(){ stop(); room = ''; el('mgrJoin').hidden = false; el('mgrRun').hidden = true; el('mgrAdd').hidden = true; el('mgrUnpair').hidden = true; el('mgrCodeIn').focus(); }
 
   function setDot(id, s){ el(id).dataset.s = s; }
@@ -103,6 +103,12 @@ function runManager(){
       renderPick(st); renderShown(st);
     }
     else if (!el('mgrPick').hidden) markPickCurrent(st.game.idx);
+    if (!el('mgrPick').hidden) say('mgrPickPj', st.pj || '—');
+    const asking = p => p === 'select' || p === 'results';
+    if (asking(st.phase) && (st.phase === 'select' ? lastPhase !== 'select' : !asking(lastPhase)) && el('mgrPick').hidden) pickShow();   // the projector shows the results or asks: open the picker at once
+    else if (!asking(st.phase) && asking(lastPhase) && !el('mgrPick').hidden) pickClose();                   // a game was chosen somewhere else
+    lastPhase = st.phase || '';
+    renderPlay(st); renderStat(); renderUse(st); renderSave(st);
     const l = st.live || {}, tb = el('mgrTrackBtn');
     tb.textContent = l.on ? 'Pause tracking' : 'Start tracking'; tb.setAttribute('aria-pressed', String(!!l.on)); tb.disabled = !l.src || !l.cal;
     el('mgrHoldBtn').setAttribute('aria-pressed', String(!!st.hold)); el('mgrHoldBtn').textContent = st.hold ? 'Resume game' : 'Hold screen';
@@ -238,8 +244,22 @@ function runManager(){
   // Two taps for anything that changes the game: the first arms the key, the second sends it.
   // ---------- game picker (overlay on the Run tab) and Setup, Games shown ----------
   const pickOpen = () => !el('mgrPick').hidden;
-  function pickClose(){ clearTimeout(pendTimer); pendTile = null; el('mgrPick').hidden = true; }
-  function pickShow(){ if (!lastState || !lastState.game) return; renderPick(lastState); el('mgrPick').hidden = false; const c = el('mgrPickGrid').querySelector('.gk[aria-pressed="true"]') || el('mgrPickGrid').querySelector('.gk'); if (c) c.focus(); }
+  function pickClose(){ pickDisarm(); el('mgrPick').hidden = true; cancelAnimationFrame(howRaf); howRaf = 0; }
+  // the how-to pictures animate only while the overlay is open
+  function howLoop(){
+    const ov = el('mgrPick'); if (ov.hidden){ howRaf = 0; return; }
+    const t = (performance.now() - howT0) / 1000, img = howtoSheetImage(), dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const fit = (cv, w, h) => { const cw = Math.round(cv.clientWidth * dpr) || w, ch = Math.round(cw * h / w); if (cv.width !== cw || cv.height !== ch){ cv.width = cw; cv.height = ch; } return cw / w; };
+    ov.querySelectorAll('.gk-hc canvas').forEach((cv, k) => {
+      const sc = fit(cv, 1920, 1240), g = cv.getContext('2d'), tau = (((t - 3 * k) % 9) + 9) % 9;
+      g.setTransform(sc, 0, 0, sc, 0, 0); howtoScene(g, k + 1, tau, img, true);
+      cv.parentNode.style.opacity = tau < 3 ? 1 : .38;
+    });
+    const pc = el('mgrPerson'), ps = fit(pc, HT_PW, HT_PH), pg = pc.getContext('2d'); pg.setTransform(ps, 0, 0, ps, 0, 0); howtoPerson(pg, t, img);
+    howRaf = requestAnimationFrame(howLoop);
+  }
+  function pickDisarm(){ clearTimeout(pendTimer); if (pendTile){ pendTile.classList.remove('pend'); pendTile = null; send('hover', {idx: -1}); } }
+  function pickShow(){ if (!lastState || !lastState.game) return; renderPick(lastState); el('mgrPick').hidden = false; howT0 = performance.now(); if (!howRaf) howRaf = requestAnimationFrame(howLoop); say('mgrPickPj', lastState.pj || '—'); const c = el('mgrPickGrid').querySelector('.gk[aria-pressed="true"]') || el('mgrPickGrid').querySelector('.gk'); if (c) c.focus(); }
   function markPickCurrent(idx){ el('mgrPickGrid').querySelectorAll('.gk').forEach(t => t.setAttribute('aria-pressed', String(Number(t.dataset.idx) === idx))); }
   function renderPick(st){
     const box = el('mgrPickGrid'); box.textContent = ''; pendTile = null; clearTimeout(pendTimer);
@@ -250,8 +270,8 @@ function runManager(){
   function pickTap(tile){                 // the first tap arms the tile (dashed outline, TAP AGAIN); the second tap changes the game
     if (pendTile === tile){ clearTimeout(pendTimer); pendTile = null; pickClose(); send('game', {idx: Number(tile.dataset.idx)}); return; }
     if (pendTile) pendTile.classList.remove('pend');
-    clearTimeout(pendTimer); pendTile = tile; tile.classList.add('pend');
-    pendTimer = setTimeout(() => { tile.classList.remove('pend'); if (pendTile === tile) pendTile = null; }, 3000);
+    clearTimeout(pendTimer); pendTile = tile; tile.classList.add('pend'); send('hover', {idx: Number(tile.dataset.idx)});     // the projector outlines the same tile
+    pendTimer = setTimeout(() => { if (pendTile === tile) pickDisarm(); }, 3000);
   }
   const SHOWN_REC = ['map', 'timeline', 'periodic', 'ttt', 'bowling', 'gallery'];
   function renderShown(st){
@@ -317,6 +337,10 @@ function runManager(){
     if (b.classList.contains('gs-k')){ const id = b.dataset.gid, on = b.dataset.on === '1'; setShown(on ? (shownIds.includes(id) ? shownIds : shownIds.concat(id)) : shownIds.filter(x => x !== id)); return; }
     if (b.id === 'mgrShownRec'){ setShown(SHOWN_REC.filter(id => ((lastState && lastState.gids) || []).includes(id))); return; }
     if (b.id === 'mgrShownAll'){ setShown((lastState && lastState.gids) || []); return; }
+    if (b.dataset.step){ const [k, d] = b.dataset.step.split(','); stepPlay(k, Number(d)); return; }
+    if (b.id === 'mgrStatReset'){ statSure(true); return; }
+    if (b.id === 'mgrStatNo'){ statSure(false); return; }
+    if (b.id === 'mgrStatYes'){ statReset(); return; }
     if (b.classList.contains('tc') && !confirmTap(b)) return;
     if (b.dataset.spd){ repSpd = Number(b.dataset.spd); el('mgrRepSpd').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); repT0 = performance.now(); return; }
     if (b.dataset.shot){ repSel = Number(b.dataset.shot); repAuto = repSel === shotList.length - 1; repT0 = performance.now(); renderDash(); return; }
@@ -329,8 +353,61 @@ function runManager(){
   el('mgrTrackBtn').addEventListener('click', () => send('track', {on: !(lastState && lastState.live && lastState.live.on)}));
   el('mgrTrackBtn2').addEventListener('click', () => send('track', {on: !(lastState && lastState.live && lastState.live.on)}));
   el('mgrFitBtn').addEventListener('click', () => send('fit', {on: !(lastState && lastState.setup && lastState.setup.fit)}));
+  // projection angles: the console keeps its own value for a moment so quick taps add up, and sends the absolute angle
+  const ksNow = {v: 0, h: 0, r: 0}; let ksEditAt = 0;
+  const ksLimit = 45, ksRound = x => Math.round(Math.max(-ksLimit, Math.min(ksLimit, x)) * 10) / 10;
+  const ksText = (ax, v) => !v ? '0°' : Math.abs(v).toFixed(1) + '° ' + (ax === 'v' ? (v > 0 ? 'top narrower' : 'top wider') : ax === 'h' ? (v > 0 ? 'right narrower' : 'right wider') : (v > 0 ? 'clockwise' : 'anticlockwise'));
+  const ksShow = () => { for (const ax of ['v', 'h', 'r']) el('mgrKs' + ax.toUpperCase()).textContent = ksText(ax, ksNow[ax]); };
+  const ksSend = (() => { const t = {}; return ax => { clearTimeout(t[ax]); t[ax] = setTimeout(() => send('ks', {axis: ax, v: ksNow[ax]}, true), 180); }; })();
+  el('mgrKs').addEventListener('click', e => {
+    const b = e.target.closest('[data-ks]'); if (!b) return; const [ax, d] = b.dataset.ks.split(',');
+    ksNow[ax] = ksRound(ksNow[ax] + Number(d)); ksEditAt = Date.now(); ksShow(); ksSend(ax);
+  });
+  // the sheet's corners by hand: tap them on the camera picture
+  let marks = null;
+  const markUi = () => { const b = el('mgrMarkBtn'); b.setAttribute('aria-pressed', String(!!marks)); b.textContent = marks ? 'Cancel marking (' + marks.length + ' of 4)' : 'Mark sheet corners'; };
+  el('mgrMarkBtn').addEventListener('click', () => { marks = marks ? null : []; markUi(); drawPv(); say('mgrCmdMsg2', marks ? 'Tap the four corners of the sheet in the camera picture.' : ''); });
   el('mgrHoldBtn').addEventListener('click', () => send('hold', {on: !(lastState && lastState.hold)}));
 
+
+  // ---------- Setup: players' screen, statistics, usage ----------
+  const psHold = {results: 0, banner: 0, feedback: 0}, psVal = {}, psTimer = {};
+  function renderPlay(st){
+    const get = k => Date.now() < psHold[k] ? psVal[k] : st[k], rs = get('results'), bn = get('banner'), fb = get('feedback');
+    say('mgrResultsV', rs == null ? '…' : rs ? rs + ' s' : 'Skipped'); say('mgrBannerV', bn == null ? '…' : bn ? bn + ' s' : 'Off'); say('mgrFeedbackV', fb == null ? '…' : fb ? fb + ' s' : 'At once');
+  }
+  function stepPlay(k, d){
+    const st = lastState || {}, cur = Date.now() < psHold[k] ? psVal[k] : st[k]; if (cur == null) return;
+    const v = Math.min(k === 'results' ? 60 : k === 'feedback' ? 15 : 30, Math.max(0, cur + d)); psVal[k] = v; psHold[k] = Date.now() + 2500; renderPlay(st);
+    clearTimeout(psTimer[k]); psTimer[k] = setTimeout(() => send('cfg', {[k]: v}), 400);          // the last tap wins
+  }
+  function renderStat(){
+    const n = Number(statsData && statsData.n) || 0;
+    say('mgrStatTxt', n ? n + (n === 1 ? ' hole has' : ' holes have') + ' been played on this rig. Players on the Evaluator page are never counted.' : 'Nobody has finished a hole yet. Players on the Evaluator page are never counted.');
+    el('mgrStatReset').disabled = !n && !shotList.length;
+  }
+  const useLimit = 10e9, useWarnAt = 70;                                   // the free plan allows 10 GB of downloads a month
+  const fmtB = b => b >= 1e9 ? (b / 1e9).toFixed(2) + ' GB' : b >= 1e6 ? (b / 1e6).toFixed(1) + ' MB' : Math.round(b / 1e3) + ' KB';
+  function renderUse(st){
+    const own = relayUse(), h = st && st.use && st.use.m === own.m ? st.use : null, down = own.down + (h ? h.down : 0), pct = down / useLimit * 100, hot = pct >= useWarnAt;
+    say('mgrUsePct', (pct < 10 ? pct.toFixed(1) : Math.round(pct)) + '%');
+    el('mgrUseBar').style.width = Math.max(1, Math.min(100, pct)) + '%'; el('mgrUseCard').classList.toggle('hot', hot);
+    say('mgrUseTxt', 'About ' + fmtB(down) + ' of the 10 GB of downloads the free plan allows this month (' + own.m + '). Counted: ' + (h ? 'the Host and this console.' : 'this console only; the Host has not reported yet.') + ' Other consoles are not counted, so check Usage in the Firebase console before a big event.');
+    el('mgrUseWarn').hidden = !hot; el('mgrUseStrip').hidden = !hot;
+    if (hot){ say('mgrUseWarn', 'More than ' + useWarnAt + '% of this month’s free downloads are used. Close the Setup and Debug tabs when you are not using them (they stream camera pictures), keep the number of open consoles low, and check the Firebase console.'); say('mgrUseStrip', 'Firebase usage ' + Math.round(pct) + '%'); }
+  }
+  // The Host says when the database refuses the shot replays or the statistics (usually old database rules, see docs/console-plan.md)
+  function renderSave(st){
+    const bad = st && st.save, box = el('mgrSaveStrip'); box.hidden = !bad;
+    if (bad) say('mgrSaveStrip', 'Replays or statistics are not being saved: ' + String(bad).slice(0, 110));
+  }
+  function statSure(on){ el('mgrStatSure').hidden = !on; el('mgrStatBtns').hidden = on; if (on) say('mgrStatSureD', 'This removes the scores, the comparisons and the shot replays for every game. It cannot be undone.'); }
+  async function statReset(){
+    statSure(false); say('mgrStatMsg', 'Deleting…');
+    const ack = await send('resetstats', {}, true);
+    if (ack && ack.ok){ statsData = {}; shotList = []; renderDash(); renderStat(); say('mgrStatMsg', 'All statistics were deleted.'); }
+    else say('mgrStatMsg', 'Could not delete: ' + (ack ? ack.error : 'no answer from the Host.'));
+  }
 
   // ---------- Setup tab ----------
   function showTab(name){
@@ -362,15 +439,18 @@ function runManager(){
       if (c.width !== pvImg.naturalWidth || c.height !== pvImg.naturalHeight){ c.width = pvImg.naturalWidth; c.height = pvImg.naturalHeight; }
       const g = c.getContext('2d'); g.drawImage(pvImg, 0, 0);
       if (su && su.quad){ g.strokeStyle = '#6f9bff'; g.lineWidth = 2; g.beginPath(); su.quad.forEach(([u, v], k) => k ? g.lineTo(u * c.width, v * c.height) : g.moveTo(u * c.width, v * c.height)); g.closePath(); g.stroke(); }
+      if (id === 'mgrPv' && su && su.sheet){ g.strokeStyle = '#ff5a5a'; g.lineWidth = 2; g.setLineDash([8, 5]); g.beginPath(); su.sheet.forEach(([u, v], k) => k ? g.lineTo(u * c.width, v * c.height) : g.moveTo(u * c.width, v * c.height)); g.closePath(); g.stroke(); g.setLineDash([]); }
+      if (id === 'mgrPv' && marks) for (const [u, v] of marks){ g.fillStyle = '#ff5a5a'; g.beginPath(); g.arc(u * c.width, v * c.height, 6, 0, 7); g.fill(); }
       if (id === 'mgrPv2' && dbg){ g.strokeStyle = '#ffffff'; g.lineWidth = 1.5; for (const [u, v] of dbg.blobs || []) g.strokeRect(u * c.width - 5, v * c.height - 5, 10, 10); }
       if (su && su.det){ g.strokeStyle = '#ff3b8d'; g.lineWidth = 2; g.beginPath(); g.arc(su.det[0] * c.width, su.det[1] * c.height, 9, 0, 7); g.stroke(); }
       c.dataset.seq = String(pvSeq);
     }
-    say('mgrPvNote', 'Updated ' + new Date().toLocaleTimeString() + '. Tap the ball to sample its color. The blue outline is the sheet as the calibration sees it.');
+    say('mgrPvNote', 'Updated ' + new Date().toLocaleTimeString() + '. Tap the ball to sample its color. The blue outline is the picture as the calibration sees it' + (su && su.sheet ? '; the red dashed outline is the sheet.' : '.'));
   }
   el('mgrPv').addEventListener('click', e => {
-    const r = el('mgrPv').getBoundingClientRect();
-    send('sampleat', {x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height});
+    const r = el('mgrPv').getBoundingClientRect(), x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+    if (marks){ marks.push([x, y]); if (marks.length === 4){ const pts = marks; marks = null; send('sheet', {pts}); say('mgrCmdMsg2', 'Sheet corners sent. Press Fit to the sheet.'); } markUi(); drawPv(); return; }
+    send('sampleat', {x, y});
   });
   function renderSetup(st){
     const su = st.setup; if (!su || tab !== 'setup') return;
@@ -379,7 +459,10 @@ function runManager(){
       const n = li.querySelector('.note'); if (n && note){ n.textContent = note.t || ''; n.dataset.tone = note.tone || ''; }
     };
     row('cam', su.src ? 'ok' : 'no', su.src ? su.label + (su.res ? ' · ' + su.res : '') : 'Off', {t: [su.notes.cam.t, su.lock].filter(Boolean).join(' '), tone: su.notes.cam.tone});
-    row('fit', 'ok', su.pin ? 'Corners adjusted' : 'Square to the screen', {t: su.fit ? 'Adjusting: the Host is showing its test card.' : ''});
+    const kz = !su.ks || (!su.ks.v && !su.ks.h && !su.ks.r);
+    row('fit', 'ok', (su.pin ? (kz ? 'Corners adjusted' : 'Angled') : 'Square to the screen') + (su.fitErr != null ? ' · fitted to the sheet' : ''), su.fit ? {t: 'Adjusting: the Host is showing its test card.'} : su.notes.fit);
+    if (su.ks && Date.now() - ksEditAt > 2500){ ksNow.v = su.ks.v; ksNow.h = su.ks.h; ksNow.r = su.ks.r; } ksShow();
+    el('mgrMarkClr').hidden = !su.sheetHand;
     const c = su.cal;
     row('cal', c ? (c.max != null && c.max > 1.5 ? 'warn' : 'ok') : 'no', c ? c.n + ' of ' + c.of + ' dots · ' + c.avg.toFixed(2) + ' in average' + (c.max != null ? ', ' + c.max.toFixed(2) + ' in worst' : '') : 'Not calibrated', su.notes.cal);
     row('color', su.sampled ? 'ok' : 'warn', (su.method === 'ref' ? 'Empty-sheet match' : 'Color only') + ' · ' + (su.sampled ? 'sampled' : 'not sampled yet'), su.notes.color);

@@ -86,7 +86,7 @@ function advance(){
   if (mode!=='result') return;
   const r = game.advance();
   shot = null; resetBall();
-  if (r==='over'){ mode='over'; overInfo=buildOver(); showSummary(); logHole(); remoteHoleDone(); }
+  if (r==='over'){ mode='over'; overInfo=buildOver(); showSummary(); logHole(); remoteHoleDone(); flowHoleDone(); }
   else { mode='aim'; $('result').hidden=true; }
   refreshPanel(); setHint(); updateShotInfo();
 }
@@ -97,7 +97,7 @@ function expireRound(r){
   mode = 'result'; showResult(r); refreshPanel(); setHint(); updateShotInfo();
 }
 function startGame(){
-  game = GAMES[gameIdx]; game.start(); remoteHoleStart(); resetBall(); shot=null; mode='aim'; overInfo=null;
+  game = GAMES[gameIdx]; game.start(); remoteHoleStart(); flowReset(); resetBall(); shot=null; mode='aim'; overInfo=null;
   $('result').hidden=true; renderOpts(); refreshPanel(); setHint(); updateShotInfo();
 }
 function holeTitle(h){

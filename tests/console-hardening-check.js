@@ -101,6 +101,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   await mgr.page.click('button[data-cmd="camoff"]'); await sleep(500);
 
   // ---------- tidying the room ----------
+  await mgr.page.click('.mgr-tab[data-tab="run"]'); await sleep(500);           // a Manager on Setup keeps asking for the picture, which would put a fresh "want" back during the check
   const now = Date.now();
   await host.page.evaluate(() => localStorage.setItem('putt-lab-pair', 'ABCDEFGH'));
   fake.put('pair/ABCDEFGH', { room, exp: 1 });

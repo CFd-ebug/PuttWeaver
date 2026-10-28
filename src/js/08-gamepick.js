@@ -37,3 +37,39 @@ function pickTile(g, n, idx, k){
   b.append(pv, gl);
   return b;
 }
+
+// ---- the same looping animation drawn on a canvas (the Host's projector uses this; g is scaled to 160 x 90 units over the tile picture) ----
+// t is seconds into the 6 s loop. Timing mirrors the keyframes used by the console's tiles above.
+function pickFx(g, id, tx, ty, t){
+  const ph = (((t % 6) + 6) % 6) / 6, x = tx * 160, y = ty * 90;
+  const c = new HtCurve([80, 97], [80 + (x - 80)*.15, 97 - (97 - y)*.45], [x - (x - 80)*.1, y + (97 - y)*.3], [x, y]);
+  const fade = ph < .06 ? ph / .06 : ph > .88 ? Math.max(0, 1 - (ph - .88) / .12) : 1;                // the ball and its trail appear, then fade at the end
+  const prog = ph < .06 ? 0 : ph > .52 ? 1 : htEase((ph - .06) / .46);
+  const pop = ph < .52 ? 0 : ph < .60 ? (ph - .52) / .08 : 1, popScale = ph < .52 ? .5 : ph < .60 ? .5 + .6*(ph - .52)/.08 : ph < .66 ? 1.1 - .1*(ph - .60)/.06 : 1;
+  const pa = ph > .88 ? Math.max(0, 1 - (ph - .88) / .12) : pop;                                       // effects: in at 52-60 %, out at 88-100 %
+  const withScale = (cx, cy, fn, a) => { g.save(); g.globalAlpha = a; g.translate(cx, cy); g.scale(popScale, popScale); g.translate(-cx, -cy); fn(); g.restore(); };
+  const paint = id === 'paint';
+  if (prog > 0){                                                                                        // the trail
+    g.save(); g.globalAlpha = fade * (paint ? .75 : .45); g.lineCap = 'round'; g.lineJoin = 'round'; g.lineWidth = paint ? 5 : 1.2; g.strokeStyle = paint ? '#e0187f' : '#0a0a0a'; c.trace(g, prog); g.stroke(); g.restore();
+  }
+  const ring = r => { g.beginPath(); g.arc(x, y, r, 0, 7); g.fillStyle = 'rgba(26,60,255,.16)'; g.fill(); g.lineWidth = 1.1; g.strokeStyle = '#1a3cff'; g.stroke(); };
+  if (id === 'timeline') withScale(x + 13, (12 + y)/2, () => { g.strokeStyle = '#c9302a'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(x, 12); g.lineTo(x, y); g.stroke(); g.fillStyle = '#c9302a'; g.fillRect(x, 12, 26, 9); }, pa);
+  else if (id === 'ttt') withScale(x, y, () => { g.strokeStyle = '#1a3cff'; g.lineWidth = 3; g.lineCap = 'round'; g.beginPath(); g.moveTo(x - 8, y - 8); g.lineTo(x + 8, y + 8); g.moveTo(x + 8, y - 8); g.lineTo(x - 8, y + 8); g.stroke(); }, pa);
+  else if (id === 'bowling') PICK_PINS.forEach((p, k) => {
+    const pk = ph - .05*(k % 5)/6, a = pk < .52 ? 0 : pk > .88 ? Math.max(0, 1 - (pk - .88)/.12) : 1, sc = pk < .52 ? .5 : pk < .60 ? .5 + .6*(pk - .52)/.08 : pk < .66 ? 1.1 - .1*(pk - .60)/.06 : 1;
+    g.save(); g.globalAlpha = a; g.translate(p[0], p[1]); g.scale(sc, sc); g.beginPath(); g.arc(0, 0, 3.5, 0, 7); g.fillStyle = '#c4c8d6'; g.fill(); g.lineWidth = .6; g.strokeStyle = '#8a8fa3'; g.stroke(); g.restore();
+  });
+  else if (id === 'gallery') withScale(x, y, () => {
+    g.beginPath(); g.arc(x, y, 8, 0, 7); g.fillStyle = 'rgba(229,0,43,.18)'; g.fill(); g.lineWidth = 1.1; g.strokeStyle = '#e5002b'; g.stroke();
+    g.lineWidth = 1.3; g.lineCap = 'round'; g.beginPath(); g.moveTo(x, y - 13); g.lineTo(x, y - 9); g.moveTo(x - 12, y - 7); g.lineTo(x - 9, y - 4); g.moveTo(x + 12, y - 7); g.lineTo(x + 9, y - 4); g.stroke();
+  }, pa);
+  else if (id === 'periodic') withScale(x, y, () => { g.fillStyle = 'rgba(26,60,255,.18)'; g.fillRect(x - 6.4, y - 5, 12.8, 10); g.lineWidth = 1.4; g.strokeStyle = '#1a3cff'; g.strokeRect(x - 6.4, y - 5, 12.8, 10); }, pa);
+  else if (paint){
+    const a = ph < .56 ? 0 : ph < .70 ? .75*(ph - .56)/.14 : ph > .88 ? Math.max(0, .75*(1 - (ph - .88)/.12)) : .75;
+    g.save(); g.globalAlpha = a; g.lineWidth = 5; g.lineCap = 'round'; g.strokeStyle = '#1a3cff'; g.beginPath(); g.moveTo(135, 8); g.bezierCurveTo(120, 20, 150, 30, 110, 44); g.bezierCurveTo(96, 49, 120, 62, 100, 70); g.stroke(); g.restore();
+  } else withScale(x, y, () => ring(id === 'map' ? 10 : 9), pa);
+  {                                                                           // the ball
+    const p = c.at(prog); g.save(); g.globalAlpha = fade; g.beginPath(); g.arc(p[0], p[1], 2.7, 0, 7); g.fillStyle = '#fff'; g.fill(); g.lineWidth = .9; g.strokeStyle = '#0a0a0a'; g.stroke();
+    g.beginPath(); g.arc(p[0], p[1], .7, 0, 7); g.fillStyle = '#0a0a0a'; g.fill(); g.restore();
+  }
+}

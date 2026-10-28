@@ -33,12 +33,18 @@ function gameStep(d){                     // next or previous game that is shown
 const REMOTE_CMDS = {
   next(){ gameStep(1); },
   prev(){ gameStep(-1); },
-  game(a){ const i = Number(a && a.idx); if (!(i >= 0 && i < GAMES.length)) throw new Error('No such game'); gameIdx = i; startGame(); if (LIVE.on) armReady(); },
+  game(a){ const i = Number(a && a.idx); if (!(i >= 0 && i < GAMES.length)) throw new Error('No such game'); if (FLOW.phase === 'results'){ FLOW.queued = i; REMOTE.key = ''; return; } gameIdx = i; startGame(); if (LIVE.on) armReady(); },
   shown(a){
     const ids = a && Array.isArray(a.ids) ? a.ids.filter(id => GAMES.some(g => g.id === id)) : null;
     if (!ids || !ids.length) throw new Error('Show at least one game');
     shownIds = GAMES.map(g => g.id).filter(id => ids.includes(id));
     try { localStorage.setItem(SHOWN_KEY, JSON.stringify(shownIds)); } catch (e) {}
+  },
+  hover(a){ const i = Number(a && a.idx); FLOW.hover = i >= 0 && i < GAMES.length ? i : -1; FLOW.hoverAt = state.clock; },
+  cfg(a){                                                                    // settings for what the players see
+    if (a && a.banner != null){ const v = Number(a.banner); if (!isFinite(v)) throw new Error('Not a number'); FLOW.bannerSecs = clamp(Math.round(v), 0, 30); flowSave(); }
+    if (a && a.feedback != null){ const v = Number(a.feedback); if (!isFinite(v)) throw new Error('Not a number'); FLOW.feedbackSecs = clamp(Math.round(v), 0, 15); flowSave(); }
+    if (a && a.results != null){ const v = Number(a.results); if (!isFinite(v)) throw new Error('Not a number'); FLOW.resultsSecs = clamp(Math.round(v), 0, 60); flowSave(); }
   },
   restart(){ startGame(); if (LIVE.on) armReady(); },
   skip(){ skipRound(); },
@@ -57,6 +63,10 @@ const REMOTE_CMDS = {
   pin(a){ if (!LIVE.fitting) throw new Error('Corner adjusting is not on'); const i = Number(a && a.i); if (!(i >= 0 && i < 4)) throw new Error('No such corner'); setPinCorner(i, Number(a.x), Number(a.y)); },
   pinrot(){ rotatePin(); },
   pinreset(){ resetPin(); },
+  ks(a){ remoteTaskCheck(); setKs(a && a.axis, a && a.v); },                                  // one projection angle, in degrees: v top/bottom, h left/right, r turn
+  ksreset(){ remoteTaskCheck(); resetKs(); },
+  autofit(){ if (!LIVE.src) throw new Error('Start the camera first'); remoteTask('Fitting the projection to the sheet', runAutoFit); },
+  sheet(a){ remoteTaskCheck(); setSheetCorners(a && a.pts ? a.pts : null); },                 // the sheet's four corners, tapped on the camera picture (fractions)
   // debug: overlays, tuning, camera controls and the report
   opt(a){ remoteOption(a && a.k, a && a.v); },
   tune(a){
@@ -101,9 +111,11 @@ function remoteSetup(){
     src: LIVE.src || '', label: LIVE.label || '', res: st.width ? st.width + '×' + st.height : '', lock: LIVE.lockNote || '',
     cal: c ? {n: c.n, of: c.of, avg: r3(c.checkAvg != null ? c.checkAvg : c.fitAvg), max: c.checkMax != null ? r3(c.checkMax) : null} : null,
     pin: LIVE.pin ? LIVE.pin.map(p => [r3(p[0]), r3(p[1])]) : null, fit: !!LIVE.fitting,
+    ks: {v: LIVE.ks.v, h: LIVE.ks.h, r: LIVE.ks.r}, sheet: LIVE.sheet ? LIVE.sheet.map(p => [r3(p[0]), r3(p[1])]) : null, sheetHand: !!LIVE.sheetHand,
+    fitErr: LIVE.fitInfo ? LIVE.fitInfo.err : null,
     method: LIVE.method, sampled: !!(LIVE.method === 'ref' ? LIVE.sig.sampled : LIVE.color.sampled), lat: Math.round(LIVE.latency * 1000),
     task: REMOTE.task || (LIVE.calib ? 'Working on the Host' : ''),
-    notes: {cam: note('lpCamNote'), cal: note('lpCalNote'), color: note('lpColorNote')},
+    notes: {cam: note('lpCamNote'), cal: note('lpCalNote'), color: note('lpColorNote'), fit: note('lpFitNote')},
     quad, det: b && LIVE.pw ? [r3(b.px / LIVE.pw), r3(b.py / LIVE.ph)] : null, log: LIVE.log.slice(-4).map(e => e.msg)
   };
 }
@@ -148,6 +160,7 @@ function remoteBall(){
   } else if (ball && ball.visible && onSheet(ball.x, ball.y)) p = ball;
   return p ? {x: Math.round(p.x * 50) / 50, y: Math.round(p.y * 50) / 50} : null;
 }
+function remoteUse(){ const u = relayUse(), q = 262144; return {m: u.m, up: Math.round(u.up / q) * q, down: Math.round(u.down / q) * q}; }
 function remoteSnapshot(){
   if (!game) return null;
   const h = game.hole ? game.hole() : null;
@@ -156,12 +169,17 @@ function remoteSnapshot(){
     game: {idx: gameIdx, id: game.id, name: game.name, status: mode === 'over' ? 'Hole complete' : game.status(), how: game.how},
     games: GAMES.map(g => g.name),
     gids: GAMES.map(g => g.id),
+    phase: FLOW.phase,                       // 'play'; 'results' while the hole's results show; 'select' while the projector asks the players to pick the next game
+    banner: FLOW.bannerSecs, results: FLOW.resultsSecs, feedback: FLOW.feedbackSecs,
+    pj: flowLabel(),                         // what the projector shows, for the controller's status chip
     shown: GAMES.map((g, i) => shownIds.includes(g.id) ? i : -1).filter(i => i >= 0),
     hint: $('hint').textContent,
     result: mode === 'result' && lastResult ? {title: lastResult.title, detail: lastResult.detail || '', tone: lastResult.tone || ''} : null,
     hole: h ? {par: h.par, strokes: h.list.map(e => e.strokes == null ? null : e.strokes), final: !!h.final} : null,
     live: {src: LIVE.src || '', on: !!LIVE.on, state: LIVE.on ? LIVE.state : 'off', cal: !!LIVE.Hcs, fps: Math.round(LIVE.camFps || 0), ms: Math.round(LIVE.procMs || 0)},
     ball: remoteBall(),
+    use: remoteUse(),                             // this device's own relay traffic this month, in 256 KB steps (see 07-relay.js)
+    save: saveProblem() || undefined,             // set when the database refuses the shot replays or the statistics (96-remote-shots.js)
     sr: [SHOTS.rev, statsRev],                    // changes when new shots or totals are in the database (96-remote-shots.js)
     setup: remoteWants() ? remoteSetup() : undefined,
     debug: remoteWantsDebug() ? remoteDebug() : undefined
