@@ -1,6 +1,6 @@
 // ---------- Bowling ----------
 function makeBowling(){
-  let pins, knocked, trail, putts, done, log, gutter, onLane;
+  let pins, knocked, trail, putts, done, log, gutter, onLane, show;
   const SP = () => 0.42*K, PIN_R = () => 0.13*K, HIT = () => 0.13*K + BALL_R;
   const PIN_HIT = () => 0.55*SP(), REACH = () => 3.5*SP(), PIN_V = () => 4*K;   // pin-to-pin contact distance, how far a full-speed pin flies, how fast pins fly on screen
   const BALL_PUSH = 1.6, PIN_PUSH = 0.65, WOBBLE = 0.08;   // energy a head-on hit gives a pin (the ball is much heavier), share a pin passes on, least energy that topples a pin
@@ -46,13 +46,74 @@ function makeBowling(){
     let i=trail.length-1; while (i>0 && s.t-trail[i].t < 0.2) i--; const q=trail[i], dt=s.t-q.t;
     return q===s || dt<=0 ? 0 : Math.max(0, Math.hypot(s.x-q.x, s.y-q.y)/dt - rollDecel()*dt/2);
   }
+  // Pins left after a first ball that has taken the head pin, in two or more groups with a gap between: the bowling
+  // "split", named by pin numbers (pins are numbered 1-10 as in bowling: index order is head pin, then each row left to right).
+  function splitName(){
+    const st = pins.map((p,i) => ({p, n:i+1})).filter(o => !o.p.down && !o.p.gone);
+    if (st.length < 2 || st[0].n === 1) return null;
+    const group = new Set([st[0]]), todo = [st[0]];
+    while (todo.length){ const a = todo.pop(); for (const b of st) if (!group.has(b) && Math.hypot(a.p.x-b.p.x, a.p.y-b.p.y) < SP()*1.05){ group.add(b); todo.push(b); } }
+    return group.size < st.length ? st.map(o => o.n).join('-') : null;
+  }
+  // Bowling-alley style shows after a putt. They move for under 2 s and then hold still until the next putt is set up,
+  // so the camera sees a still sheet again before it photographs the empty sheet. Only navy, blue, magenta, red and white:
+  // nothing near the ball's yellow, and nothing that turns a dark part of the picture bright.
+  const NAVY = 'rgba(20,30,64,0.92)', MAG = '#d6336c', BLUE = '#3b5bdb';
+  const ease = u => 1-Math.pow(1-clamp(u,0,1),3);
+  function slam(str, sub, a, at, color){   // a banner whose word lands big and settles, with a small line under it
+    const u = (a-at)/0.32; if (u < 0) return;
+    const y = headY() + (D-headY())*0.45, sz = 0.3*K*(1 + 1.1*(1-ease(u))), w = Math.max(LB()+0.5*K, tw(str, 0.3*K, {font:'display'})+0.5*K);
+    ctx.globalAlpha = clamp(u*3,0,1); banner(W/2-w/2, y-0.32*K, w, sub ? 0.86*K : 0.64*K);
+    txt(str, W/2, y, sz, {font:'display', color:color||'#ffffff', ls:.06});
+    if (sub && a-at > 0.35) txt(sub, W/2, y+0.36*K, 0.1*K, {font:'display', color:'#c5ccff', ls:.12});
+    ctx.globalAlpha = 1;
+  }
+  function wave(str, x, y, size, color, off){   // letters drawn one by one, each moved by off(i)
+    const o = {font:'display'}, w = tw(str, size, o); let cx = x - w/2;
+    for (let i=0;i<str.length;i++){ const cw = tw(str[i], size, o), d = off(i); txt(str[i], cx+cw/2+d.x, y+d.y, size, {font:'display', color}); cx += cw; }
+  }
+  function drawShow(t){
+    if (!show) return;
+    const a = t - show.t0, hy = headY(), deck = {x:W/2, y:hy-1.5*SP()*0.866}, lx = W/2-LB()/2;
+    if (show.kind === 'strike'){
+      if (a < 0.8){ const u = a/0.8; circle(deck.x, deck.y, ease(u)*1.3*K); ctx.lineWidth = 0.06*K*(1-u); ctx.strokeStyle = MAG; ctx.globalAlpha = 1-u; ctx.stroke(); ctx.globalAlpha = 1; }
+      if (a < 1.6) for (let i=0;i<12;i++){   // little pins burst out of the deck
+        const ang = i/12*Math.PI*2 + 0.3, d = ease(a/1.3)*1.15*K, x = deck.x+Math.cos(ang)*d, y = deck.y+Math.sin(ang)*d*0.8, r = 0.05*K;
+        ctx.save(); ctx.translate(x,y); ctx.rotate(ang + a*7); ctx.globalAlpha = clamp((1.6-a)/0.4,0,1);
+        rrect(-r*1.6,-r*0.6,r*3.2,r*1.2,r*0.6); ctx.fillStyle = '#ffffff'; ctx.fill(); ctx.lineWidth = 0.01*K; ctx.strokeStyle = '#7d879c'; ctx.stroke();
+        ctx.fillStyle = '#c9302a'; ctx.fillRect(r*0.4,-r*0.6,r*0.35,r*1.2); ctx.restore();
+      }
+      slam('STRIKE', 'HOLE IN ONE', a, 0.15);
+    } else if (show.kind === 'spare'){
+      const u = ease(a/0.4), x0 = lx+0.15*K, y0 = hy+0.35*K, x1 = lx+LB()-0.15*K, y1 = hy-3*SP()*0.866-0.3*K;   // the spare mark: a slash
+      ctx.lineCap = 'round'; ctx.lineWidth = 0.14*K; ctx.strokeStyle = BLUE; seg(x0, y0, x0+(x1-x0)*u, y0+(y1-y0)*u); ctx.stroke();
+      slam('SPARE', 'ALL TEN IN 2', a, 0.3);
+    } else if (show.kind === 'split'){
+      const st = pins.filter(p => !p.down && !p.gone), puls = a < 1.8 ? Math.sin(a*9)*0.25 : 0;
+      for (const p of st){ circle(p.x, p.y, PIN_R()*(1.55+puls)); ctx.lineWidth = 0.03*K; ctx.strokeStyle = MAG; ctx.stroke(); }
+      const L = st.reduce((m,p) => p.x < m.x ? p : m), R = st.reduce((m,p) => p.x > m.x ? p : m), u = ease((a-0.2)/0.4);
+      if (u > 0){   // a crack between the outside pins
+        ctx.beginPath(); ctx.moveTo(L.x, L.y); const n = 7;
+        for (let i=1;i<=Math.ceil(n*u);i++){ const f = Math.min(i/n, u), j = i<n ? (i%2 ? 1 : -1)*0.06*K : 0; ctx.lineTo(L.x+(R.x-L.x)*f, L.y+(R.y-L.y)*f+j); }
+        ctx.lineWidth = 0.025*K; ctx.strokeStyle = '#c9302a'; ctx.setLineDash([0.05*K, 0.03*K]); ctx.stroke(); ctx.setLineDash([]);
+      }
+      slam(show.name + ' SPLIT', 'PICK IT UP FOR A SPARE', a, 0.4, '#ffd6e5');
+    } else if (show.kind === 'gutter'){
+      if (a < 1.5){ const on = Math.floor(a/0.25)%2 === 0; if (on){ ctx.fillStyle = 'rgba(201,48,42,0.55)'; ctx.fillRect(lx-GUT(), 0, GUT(), D); ctx.fillRect(lx+LB(), 0, GUT(), D); } }
+      const y = hy + (D-hy)*0.45, w = LB()+0.5*K; banner(W/2-w/2, y-0.32*K, w, 0.64*K);
+      wave('GUTTER', W/2, y, 0.26*K, '#aab3c8', i => ({x:0, y: ease((a-i*0.08)/0.6)*(0.04+0.025*Math.abs(i-2.5))*K}));
+    } else if (show.kind === 'wobbler'){
+      const y = hy + (D-hy)*0.45, w = LB()+0.5*K, damp = Math.max(0, 1-a/1.8); banner(W/2-w/2, y-0.32*K, w, 0.64*K);
+      wave('WOBBLER', W/2, y, 0.24*K, '#ffffff', i => ({x: Math.sin(a*16+i)*0.025*K*damp, y: Math.sin(a*12+i*0.9)*0.05*K*damp}));
+    }
+  }
   function drawPin(x,y,r){ circle(x,y,r); ctx.fillStyle='#ffffff'; ctx.fill(); ctx.lineWidth=0.012*K; ctx.strokeStyle='#7d879c'; ctx.stroke(); circle(x,y,r*0.58); ctx.lineWidth=r*0.2; ctx.strokeStyle='#c9302a'; ctx.stroke(); circle(x,y,r*0.2); ctx.fillStyle='#d7dbe5'; ctx.fill(); }
   return {
     id:'bowling', name:'Bowling', reads:'path', tapOK:false,
     how:'Ten projected pins at the far end of a lane. Pins fall where the ball’s path crosses them and can take neighbors down. Knocked pins are cleared between putts.',
     rule:() => 'Putts to finish: your score is the putts it takes to knock down all ten pins, so a strike is a hole in one. After 4 putts you pick up and take 5.',
     hole:() => ({par:SIM.bowlPar, list:[{who:'', strokes:strokes()}], final:!!done}),
-    start(){ rack(); putts=0; done=null; log=[]; knocked=0; trail=[]; gutter=false; onLane=false; },
+    start(){ rack(); putts=0; done=null; log=[]; knocked=0; trail=[]; gutter=false; onLane=false; show=null; },
     status(){ return done ? 'Hole complete' : `Putt ${putts+1} of ${MAX_PUTTS} · ${plural(standing(),'pin')} standing`; },
     /*SIM*/autoPutt(){   // the pocket beside the head pin on a full rack, otherwise straight at the nearest standing pin
       const st = pins.filter(p=>!p.down && !p.gone), f = st.reduce((a,p) => p.y > a.y ? p : a);
@@ -116,16 +177,19 @@ function makeBowling(){
       txt('PINS', sx, D*0.16, 0.08*K, {font:'display', color:'#5a6276', ls:.1});
       // head pin at the bottom, as on the lane
       for (const p of pins){ const x=sx+(p.x-W/2)*0.75, y=D*0.16+0.32*K+(p.y-hy+SP()*3*0.866)*0.75; circle(x,y,0.07*K); if (!p.gone && (!p.down || t < p.fall.t)){ ctx.fillStyle='#1d2333'; ctx.fill(); } else { ctx.lineWidth=0.012*K; ctx.strokeStyle='#9aa2b4'; ctx.stroke(); } }
+      drawShow(t);
     },
     onRest(p, why){
       putts++; const left = standing(); log.push({down:knocked, left});
       const note = why && !knocked ? ' '+WHY[why] : '', reached = trail.some(s => s.y < headY()+PIN_R());
-      if (!left){ done='clear'; return {title: putts===1 ? 'Strike: hole in one' : putts===2 ? 'Spare: all ten in 2' : `All ten in ${putts}`, detail:`Hole score ${putts}.`, tone:'good'}; }
+      const sh = kind => { show = {kind, t0:state.clock}; };
+      if (!left){ done='clear'; if (putts <= 2) sh(putts === 1 ? 'strike' : 'spare'); return {title: putts===1 ? 'Strike: hole in one' : putts===2 ? 'Spare: all ten in 2' : `All ten in ${putts}`, detail:`Hole score ${putts}.`, tone:'good'}; }
       if (putts >= MAX_PUTTS){ done='pick'; return {title:'Pick up', detail:`${plural(left,'pin')} still standing after ${MAX_PUTTS} putts, so the hole scores 5.`+note, tone:'bad'}; }
-      const wobbled = pins.some(q => q.wob != null && !q.down && !q.gone);
-      return {title: knocked ? plural(knocked,'pin') : gutter ? 'Gutter ball' : wobbled ? 'Wobbler' : why === 'short' || (p && !reached) ? 'Short' : 'No pins', detail:`${plural(left,'pin')} standing, ${plural(putts,'stroke')} so far.`+note, tone: knocked ? '' : 'bad'};
+      const wobbled = pins.some(q => q.wob != null && !q.down && !q.gone), split = putts === 1 ? splitName() : null;
+      if (split){ sh('split'); show.name = split; } else if (!knocked && gutter) sh('gutter'); else if (!knocked && wobbled) sh('wobbler');
+      return {title: knocked ? plural(knocked,'pin') : gutter ? 'Gutter ball' : wobbled ? 'Wobbler' : why === 'short' || (p && !reached) ? 'Short' : 'No pins', detail:(split ? `A ${split} split. ` : '')+`${plural(left,'pin')} standing, ${plural(putts,'stroke')} so far.`+note, tone: knocked ? '' : 'bad'};
     },
-    advance(){ if (done) return 'over'; pins.forEach(p => { if (p.down) p.gone = true; p.wob = null; }); trail=[]; return 'next'; },
+    advance(){ show = null; if (done) return 'over'; pins.forEach(p => { if (p.down) p.gone = true; p.wob = null; }); trail=[]; return 'next'; },
     summary(){ return {detail: done === 'clear' ? `All ten pins down in ${plural(putts,'putt')}.` : `${plural(standing(),'pin')} left standing after ${MAX_PUTTS} putts.`}; },
     card(){
       if (!log.length) return '<p class="empty">No putts yet. Ten pins to clear.</p>';
