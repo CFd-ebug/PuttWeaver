@@ -195,12 +195,13 @@ function makeBowling(){
       const t=state.clock, lb=LB(), g=GUT(), lx=W/2-lb/2, hy=headY();
       ctx.fillStyle='#e9ecf2'; ctx.fillRect(0,0,W,D);
       ctx.fillStyle='#b9c1d1'; ctx.fillRect(lx-g,0,lb+2*g,D);
-      ctx.fillStyle='#ebdfcb'; ctx.fillRect(lx,0,lb,D);
-      ctx.fillStyle='#f3ecdf'; ctx.fillRect(lx, hy-SP()*3*0.866-0.3*K, lb, SP()*3*0.866+0.6*K);
-      ctx.strokeStyle='rgba(150,120,80,0.18)'; ctx.lineWidth=0.006*K;
+      // a cool, pale lane with navy markings: no wood tan or brown, which sit too close to the ball's yellow (CLAUDE.md rule 1)
+      ctx.fillStyle='#dde4f2'; ctx.fillRect(lx,0,lb,D);
+      ctx.fillStyle='#eef2fa'; ctx.fillRect(lx, hy-SP()*3*0.866-0.3*K, lb, SP()*3*0.866+0.6*K);
+      ctx.strokeStyle='rgba(60,80,140,0.14)'; ctx.lineWidth=0.006*K;
       for (let b=1;b<39;b++){ const x=lx+b/39*lb; seg(x,0,x,D); ctx.stroke(); }
       const ay = hy + (D-hy)*0.55;
-      ctx.fillStyle='#6d4c32';
+      ctx.fillStyle='#2f3b6b';
       for (let b=5;b<=35;b+=5){ const x=lx+(b-0.5)/39*lb, s=0.06*K; ctx.beginPath(); ctx.moveTo(x,ay-s*1.6); ctx.lineTo(x+s*0.6,ay); ctx.lineTo(x-s*0.6,ay); ctx.closePath(); ctx.fill(); }
       for (const b of [3,5,8,11,14,26,29,32,35,37]){ circle(lx+(b-0.5)/39*lb, D-0.32*K, 0.018*K); ctx.fill(); }
       ctx.fillStyle='#2a2f3a'; ctx.fillRect(lx-g, D-0.05*K, lb+2*g, 0.025*K);

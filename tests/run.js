@@ -22,6 +22,7 @@ const suite = [
   { name: 'offline: no network requests', file: 'offline-check.js', timeout: 120, ok: [/"requests": \[\]/, /"errors": \[\]/] },
   { name: 'ranking and export panel', file: 'rank-check.js', timeout: 120, ok: [NO_ERRORS] },
   { name: 'Crowd Search difficulty', file: 'seek-check.js', timeout: 120, ok: [NO_ERRORS] },
+  { name: 'Bowling pin physics and result ribbons', file: 'bowling-check.js', timeout: 240, ok: [NO_ERRORS] },
 ];
 if (full) {
   for (const g of allGames) suite.push({ name: 'tracking, closed loop: ' + g, file: 'play-check.js', args: [g, 'ref', 'x', '3'], timeout: 480, ok: [NO_ERRORS, /3\/3 scored/] });
