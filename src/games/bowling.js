@@ -93,19 +93,22 @@ function makeBowling(){
       ctx.fillStyle = th.fold; ctx.fill();
     }
     // the band; a torn ribbon is drawn as two halves pulled apart along a zigzag
-    const N = 24, X = u => cx + u*2*ex + (th.tear ? (u < 0 ? -g : g) : 0);
-    const zig = (sh, down) => { const m = 6; for (let k=0;k<=m;k++){ const f = down ? k/m : 1-k/m; ctx.lineTo(cx + sh + (k%2 ? 0.05*K : -0.05*K)*(k>0 && k<m ? 1 : 0), cy - BH/2 + bow(0) + BH*f); } };
+    // a torn ribbon tears between the two letters nearest its middle, so no letter is cut
+    let tearX = cx, edge = cx - tot/2;
+    for (let i=0;i<ws.length-1;i++){ edge += ws[i]; if (Math.abs(edge-cx) < Math.abs(tearX-cx) || i === 0) tearX = edge; }
+    const N = 24, tu = th.tear ? (tearX-cx)/(2*ex) : 0;
+    const zig = (sh, down) => { const m = 6; for (let k=0;k<=m;k++){ const f = down ? k/m : 1-k/m; ctx.lineTo(tearX + sh + (k%2 ? 0.05*K : -0.05*K)*(k>0 && k<m ? 1 : 0), cy - BH/2 + bow(tu) + BH*f); } };
     const half = (u0, u1, sh) => {
       ctx.beginPath(); for (let i=0;i<=N;i++){ const u = u0+(u1-u0)*i/N; ctx[i ? 'lineTo' : 'moveTo'](cx + u*2*ex + sh, cy - BH/2 + bow(u)); }
-      if (th.tear && u1 === 0) zig(sh, true); else ctx.lineTo(cx + u1*2*ex + sh, cy + BH/2 + bow(u1));
+      if (th.tear && u1 === tu) zig(sh, true); else ctx.lineTo(cx + u1*2*ex + sh, cy + BH/2 + bow(u1));
       for (let i=N;i>=0;i--){ const u = u0+(u1-u0)*i/N; ctx.lineTo(cx + u*2*ex + sh, cy + BH/2 + bow(u)); }
-      if (th.tear && u0 === 0) zig(sh, false);
+      if (th.tear && u0 === tu) zig(sh, false);
       ctx.closePath(); ctx.fillStyle = th.band; ctx.fill(); ctx.lineWidth = 0.02*K; ctx.strokeStyle = '#ffffff'; ctx.stroke();
     };
-    if (th.tear){ half(-0.5, 0, -g); half(0, 0.5, g); } else half(-0.5, 0.5, 0);
+    if (th.tear){ half(-0.5, tu, -g); half(tu, 0.5, g); } else half(-0.5, 0.5, 0);
     let x = cx - tot/2;
     for (let i=0;i<str.length;i++){   // the letters ride the bow of the band
-      const xc = x + ws[i]/2, u = (xc-cx)/(2*ex||1), sh = th.tear ? (xc < cx ? -g : g) : 0; x += ws[i];
+      const xc = x + ws[i]/2, u = (xc-cx)/(2*ex||1), sh = th.tear ? (xc < tearX ? -g : g) : 0; x += ws[i];
       if (th.droop){   // slump in from above, one by one, no bounce
         const k = (a - 0.35 - i*0.09)/0.5; if (k <= 0) continue;
         txt(str[i], xc, cy + bow(u) + 0.01*K - (1-ease(k))*0.35*K + Math.abs(i-(str.length-1)/2)*0.012*K*ease(k), size, {font:'display', color:'#e2e6ef', halo:th.fold, alpha:clamp(k*2,0,1)});
@@ -147,7 +150,7 @@ function makeBowling(){
         for (let i=1;i<=Math.ceil(n*u);i++){ const f = Math.min(i/n, u), j = i<n ? (i%2 ? 1 : -1)*0.06*K : 0; ctx.lineTo(L.x+(R.x-L.x)*f, L.y+(R.y-L.y)*f+j); }
         ctx.lineWidth = 0.025*K; ctx.strokeStyle = '#c9302a'; ctx.setLineDash([0.05*K, 0.03*K]); ctx.stroke(); ctx.setLineDash([]);
       }
-      ribbon(show.name + ' SPLIT', 'PICK IT UP FOR A SPARE', a - 0.35, THEMES.split);
+      ribbon('SPLIT!', 'PICK IT UP FOR A SPARE', a - 0.35, THEMES.split);
     } else if (k === 'gutter'){
       if (a < 1.5 && Math.floor(a/0.25)%2 === 0){ ctx.fillStyle = 'rgba(201,48,42,0.55)'; ctx.fillRect(lx-GUT(), 0, GUT(), D); ctx.fillRect(lx+LB(), 0, GUT(), D); }
       ribbon('GUTTER', 'STAY ON THE LANE', a, THEMES.gutter);
@@ -234,7 +237,7 @@ function makeBowling(){
       if (!left){ done='clear'; sh(putts === 1 ? 'strike' : putts === 2 ? 'spare' : 'clear'); return {title: putts===1 ? 'Strike: hole in one' : putts===2 ? 'Spare: all ten in 2' : `All ten in ${putts}`, detail:`Hole score ${putts}.`, tone:'good'}; }
       if (putts >= MAX_PUTTS){ done='pick'; sh('pick'); return {title:'Pick up', detail:`${plural(left,'pin')} still standing after ${MAX_PUTTS} putts, so the hole scores 5.`+note, tone:'bad'}; }
       const wobbled = pins.some(q => q.wob != null && !q.down && !q.gone), split = putts === 1 ? splitName() : null;
-      if (split){ sh('split'); show.name = split; } else if (!knocked && gutter) sh('gutter'); else if (!knocked && wobbled) sh('wobbler');
+      if (split) sh('split'); else if (!knocked && gutter) sh('gutter'); else if (!knocked && wobbled) sh('wobbler');
       return {title: knocked ? plural(knocked,'pin') : gutter ? 'Gutter ball' : wobbled ? 'Wobbler' : why === 'short' || (p && !reached) ? 'Short' : 'No pins', detail:(split ? `A ${split} split. ` : '')+`${plural(left,'pin')} standing, ${plural(putts,'stroke')} so far.`+note, tone: knocked ? '' : 'bad'};
     },
     advance(){ show = null; if (done) return 'over'; pins.forEach(p => { if (p.down) p.gone = true; p.wob = null; }); trail=[]; return 'next'; },
