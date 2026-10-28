@@ -580,7 +580,7 @@ body.role-manage.sw{--sw-fs:14px}
   .d-dist{height:6em}
 
   /* Setup: checklist | games (two columns of five) over camera, players' screen, statistics and usage */
-  .role-manage #mgrTabSetup{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.1em;align-content:start;align-items:start}
+  .role-manage #mgrTabSetup{display:grid;grid-template-columns:minmax(0,1.3fr) repeat(2,minmax(0,1fr));gap:1.1em;align-content:start;align-items:start}
   .role-manage #mgrTabSetup .mgr-check{grid-column:1;grid-row:1 / span 4}
   .role-manage #mgrTabSetup .gs-card{grid-column:2 / 4;grid-row:1}
   .role-manage #mgrTabSetup .mgr-prev,.role-manage #mgrTabSetup .mgr-fit{grid-column:2;grid-row:2 / span 3}
@@ -591,10 +591,12 @@ body.role-manage.sw{--sw-fs:14px}
   .role-manage .mgr-prev:has(~ #mgrFitCard:not([hidden])){display:none}
   .role-manage #mgrTabSetup .mgr-check{align-self:stretch}
   .role-manage #mgrTabDebug{display:grid;align-content:start;align-items:start}
-  .role-manage .mgr-list{gap:1.3em;margin-top:.7em;font-size:1.15em}
+  .role-manage .mgr-list{gap:.9em;margin-top:.5em;font-size:1.05em}
+  .role-manage #mgrSetupLog{display:none}
   .role-manage .mgr-list .st{font-size:1em}.role-manage .mgr-list .note{font-size:.95em}
   .role-manage .mgr-list .mgr-btns .btn{font-size:1em;padding:.6em .5em}
-  .role-manage .mgr-list .mgr-btns{grid-template-columns:repeat(auto-fit,minmax(11em,1fr));gap:.6em}
+  .role-manage .mgr-list .mgr-btns{grid-template-columns:repeat(auto-fit,minmax(9em,1fr));gap:.5em}
+  .role-manage .ks-grid{gap:.3em .8em;margin:.3em 0}
   .gs-row{padding:.65em 0;gap:1em}.gs-th{width:7em}.gs-nm small{font-size:1em}.gs-nm b{font-size:1.7em;margin-top:.15em}
   .gs-k{height:3em;min-width:4.2em;font-size:1.3em}
   .gs-list{column-gap:2.5em}
