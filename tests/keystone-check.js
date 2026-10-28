@@ -25,7 +25,7 @@ const check = (ok, what) => { (ok ? notes : fails).push((ok ? 'ok   ' : 'FAIL ')
   });
   check(m.zero < 1e-9, 'Zero angles leave the corners where they were');
   check(m.topW[0] < m.topW[1] * 0.97, `Top / bottom + makes the top narrower (${m.topW.map(v => v.toFixed(3)).join(' vs ')})`);
-  check(m.leftH[0] > m.leftH[1] * 1.03, `Left / right - makes the right edge taller than the left... (${m.leftH.map(v => v.toFixed(3)).join(' vs ')})`);
+  check(m.leftH[0] < m.leftH[1] * 0.97, `Left / right - makes the right edge wider, so taller (${m.leftH.map(v => v.toFixed(3)).join(' vs ')})`);
   check(m.inside, 'Even 45° on every axis keeps the picture on the screen');
 
   // ---- fit to the sheet ----
@@ -37,11 +37,6 @@ const check = (ok, what) => { (ok ? notes : fails).push((ok ? 'ok   ' : 'FAIL ')
   if (!r.ok) console.log(r.log.join('\n'));
   const q = (a, b) => a.map(p => Math.min(...b.map(o => Math.hypot(p[0]-o[0], p[1]-o[1]))));
   if (r.sheet) check(Math.max(...q(r.sheet, geo.sheet)) < 0.015, `The sheet's corners are found in the camera picture (worst ${(Math.max(...q(r.sheet, geo.sheet)) * 100).toFixed(2)}% of the picture)`);
-  const g = await page.evaluate(sheet => {
-    const L = window.__lab, W = L.W, D = L.D, corners = [[0,0],[W,0],[W,D],[0,D]];
-    const Gs = L.homFit ? null : null;
-    return { W, D };
-  }, geo.sheet);
   const fit = await page.evaluate(sheet => {
     // ground truth: the sheet is a W x D rectangle, so feet -> camera is the homography through its four corners (try both winding orders and the four turns, take the best)
     const L = window.__lab, W = L.W, D = L.D, V = L.LIVE, feet = [[0,0],[W,0],[W,D],[0,D]];

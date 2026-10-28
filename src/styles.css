@@ -600,3 +600,11 @@ body.role-manage.sw{--sw-fs:14px}
   .gs-list{column-gap:2.5em}
   .ps-row{padding:.6em 0}.ps-txt b{font-size:1.6em}.ps-txt span{font-size:1.05em}.ps-step output{font-size:1.6em;min-width:4.6em}
 }
+
+/* Setup: projection angles */
+.ks-grid{display:grid;grid-template-columns:auto 1fr;gap:.5em 1em;align-items:center;margin:.5em 0}
+.ks-n{font-weight:700}
+.ks-c{display:flex;align-items:center;gap:.4em;flex-wrap:wrap;justify-content:flex-end}
+.ks-c output{min-width:8.5em;text-align:center;font:600 .95em/1 "IBM Plex Mono",monospace}
+.ks-c .btn{min-width:2.6em}
+.ks-row{align-items:center}.ks-row .ks-n{flex:1 1 100%;font-weight:700}.ks-row output{min-width:7em;text-align:center;font:600 12px/1 var(--mono)}
