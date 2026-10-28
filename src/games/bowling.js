@@ -84,7 +84,7 @@ function makeBowling(){
     const cx = W/2 + (th.wobble ? Math.sin(a*14)*0.07*K*damp : 0);
     const arc = th.droop ? -(0.04 + 0.1*ease(a/1.2))*K : th.wobble ? (0.06 + 0.12*Math.cos(a*11)*damp)*K : (0.08 + 0.03*Math.sin(a*7)*damp)*K;
     const bow = u => -arc*Math.cos(Math.PI*u);   // u from -0.5 to 0.5; a positive arc lifts the middle
-    const tl = ease((a-0.25)/0.2)*0.5*K, drop = 0.16*K, ex = BW/2*sx, g = th.tear ? ease((a-0.55)/0.3)*0.08*K : 0;
+    const tl = ease((a-0.25)/0.2)*0.5*K, drop = 0.16*K, ex = BW/2*sx, g = th.tear ? ease((a-1.05)/0.25)*0.12*K : 0;   // the word is written first, then the ribbon tears
     for (const side of [-1, 1]) if (tl > 0){   // tail behind each end, then the fold that joins it to the band
       const sh = side*g, x0 = cx + sh + side*(ex-0.25*K), x1 = cx + sh + side*(ex+tl), y0 = cy - BH/2 + drop + bow(0.5), y1 = cy + BH/2 + drop + bow(0.5), n = 0.14*K*Math.min(1, tl/(0.5*K));
       ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y0); ctx.lineTo(x1 - side*n, (y0+y1)/2); ctx.lineTo(x1, y1); ctx.lineTo(x0, y1); ctx.closePath();
@@ -92,31 +92,35 @@ function makeBowling(){
       ctx.beginPath(); ctx.moveTo(cx + sh + side*ex, cy + BH/2 + bow(0.5)); ctx.lineTo(cx + sh + side*(ex-0.25*K), y1); ctx.lineTo(cx + sh + side*(ex-0.25*K), cy + BH/2 + bow(0.5)); ctx.closePath();
       ctx.fillStyle = th.fold; ctx.fill();
     }
-    // the band; a torn ribbon is drawn as two halves pulled apart along a zigzag
-    // a torn ribbon tears between the two letters nearest its middle, so no letter is cut
-    let tearX = cx, edge = cx - tot/2;
-    for (let i=0;i<ws.length-1;i++){ edge += ws[i]; if (Math.abs(edge-cx) < Math.abs(tearX-cx) || i === 0) tearX = edge; }
-    const N = 24, tu = th.tear ? (tearX-cx)/(2*ex) : 0;
-    const zig = (sh, down) => { const m = 6; for (let k=0;k<=m;k++){ const f = down ? k/m : 1-k/m; ctx.lineTo(tearX + sh + (k%2 ? 0.05*K : -0.05*K)*(k>0 && k<m ? 1 : 0), cy - BH/2 + bow(tu) + BH*f); } };
-    const half = (u0, u1, sh) => {
+    // the band, with the letters riding its bow
+    const N = 24, torn = g > 0;
+    const zig = (sh, down) => { const m = 6; for (let k=0;k<=m;k++){ const f = down ? k/m : 1-k/m; ctx.lineTo(cx + sh + (k%2 ? 0.05*K : -0.05*K)*(k>0 && k<m ? 1 : 0), cy - BH/2 + bow(0) + BH*f); } };
+    const band = (u0, u1, sh) => {
       ctx.beginPath(); for (let i=0;i<=N;i++){ const u = u0+(u1-u0)*i/N; ctx[i ? 'lineTo' : 'moveTo'](cx + u*2*ex + sh, cy - BH/2 + bow(u)); }
-      if (th.tear && u1 === tu) zig(sh, true); else ctx.lineTo(cx + u1*2*ex + sh, cy + BH/2 + bow(u1));
+      if (torn && u1 === 0) zig(sh, true); else ctx.lineTo(cx + u1*2*ex + sh, cy + BH/2 + bow(u1));
       for (let i=N;i>=0;i--){ const u = u0+(u1-u0)*i/N; ctx.lineTo(cx + u*2*ex + sh, cy + BH/2 + bow(u)); }
-      if (th.tear && u0 === tu) zig(sh, false);
-      ctx.closePath(); ctx.fillStyle = th.band; ctx.fill(); ctx.lineWidth = 0.02*K; ctx.strokeStyle = '#ffffff'; ctx.stroke();
+      if (torn && u0 === 0) zig(sh, false);
+      ctx.closePath();
     };
-    if (th.tear){ half(-0.5, tu, -g); half(tu, 0.5, g); } else half(-0.5, 0.5, 0);
-    let x = cx - tot/2;
-    for (let i=0;i<str.length;i++){   // the letters ride the bow of the band
-      const xc = x + ws[i]/2, u = (xc-cx)/(2*ex||1), sh = th.tear ? (xc < tearX ? -g : g) : 0; x += ws[i];
-      if (th.droop){   // slump in from above, one by one, no bounce
-        const k = (a - 0.35 - i*0.09)/0.5; if (k <= 0) continue;
-        txt(str[i], xc, cy + bow(u) + 0.01*K - (1-ease(k))*0.35*K + Math.abs(i-(str.length-1)/2)*0.012*K*ease(k), size, {font:'display', color:'#e2e6ef', halo:th.fold, alpha:clamp(k*2,0,1)});
-      } else {   // pop in, overshoot and settle
-        const k = (a - 0.3 - i*0.06)/0.28, j = th.wobble ? Math.sin(a*12+i*0.9)*0.05*K*damp : 0; if (k <= 0) continue;
-        txt(str[i], xc + sh, cy + bow(u) + 0.01*K + j, size*backOut(k), {font:'display', color:'#ffffff', halo:th.fold});
+    const letters = sh => {
+      let x = cx - tot/2;
+      for (let i=0;i<str.length;i++){
+        const xc = x + ws[i]/2, u = (xc-cx)/(2*ex||1); x += ws[i];
+        if (th.droop){   // slump in from above, one by one, no bounce
+          const k = (a - 0.35 - i*0.09)/0.5; if (k <= 0) continue;
+          txt(str[i], xc, cy + bow(u) + 0.01*K - (1-ease(k))*0.35*K + Math.abs(i-(str.length-1)/2)*0.012*K*ease(k), size, {font:'display', color:'#e2e6ef', halo:th.fold, alpha:clamp(k*2,0,1)});
+        } else {   // pop in, overshoot and settle
+          const k = (a - 0.3 - i*0.06)/0.28, j = th.wobble ? Math.sin(a*12+i*0.9)*0.05*K*damp : 0; if (k <= 0) continue;
+          txt(str[i], xc + sh, cy + bow(u) + 0.01*K + j, size*backOut(k), {font:'display', color:'#ffffff', halo:th.fold});
+        }
       }
-    }
+    };
+    const piece = (u0, u1, sh) => {   // one piece of band; once torn, each half keeps its part of the words and moves with it
+      band(u0, u1, sh); ctx.fillStyle = th.band; ctx.fill();
+      if (torn){ ctx.save(); band(u0, u1, sh); ctx.clip(); letters(sh); ctx.restore(); }
+      band(u0, u1, sh); ctx.lineWidth = 0.02*K; ctx.strokeStyle = '#ffffff'; ctx.stroke();
+    };
+    if (torn){ piece(-0.5, 0, -g); piece(0, 0.5, g); } else { piece(-0.5, 0.5, 0); letters(0); }
     if (th.spark) for (let i=0;i<8;i++){   // sparkles: four-point stars around the ribbon
       const st = 0.5 + i*0.11, v = Math.sin(Math.PI*clamp((a-st)/0.5,0,1)); if (v <= 0) continue;
       const ang = i*2.4, px = cx + Math.cos(ang)*(BW*0.55), py = cy + Math.sin(ang)*0.6*K, r = 0.14*K*v;
