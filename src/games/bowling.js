@@ -16,12 +16,15 @@ function makeBowling(){
   // way two equal pins collide: the struck pin leaves along the line between their centers with the head-on share of the
   // energy and the striker carries on sideways with the rest, so a thin hit sends a pin off slowly. Pins bounce off the lane
   // edges (kickbacks). Too little energy and the pin only wobbles. No dice: the same path always leaves the same pins.
+  // Each falling pin keeps its route (fall.path: points with the time it gets there) so the drawing shows it sliding into
+  // the pins it knocks over; harder-pushed pins slide faster, and a pin is hit at the moment the slider reaches it.
   function topple(p, dx, dy, v, delay, depth){
     if (v < WOBBLE){ p.wob = state.clock+delay; return; }
-    p.down=true; p.fall={dx,dy,v,t:state.clock+delay}; knocked++; fly(p.x, p.y, dx, dy, v, delay, depth);
+    p.down=true; p.fall={dx,dy,v,t:state.clock+delay,path:[{x:p.x,y:p.y,t:state.clock+delay}]}; knocked++; fly(p, p.x, p.y, dx, dy, v, delay, depth);
   }
-  function fly(x, y, dx, dy, v, delay, depth){
+  function fly(p, x, y, dx, dy, v, delay, depth){
     if (v < 0.12 || depth > 12) return;
+    const path=p.fall.path, spd=PIN_V()*clamp(v,0.4,1.2), mark=(at) => path.push({x:x+dx*at, y:y+dy*at, t:state.clock+delay+at/spd});
     const L=REACH()*v, pc=PIN_HIT(), lx=W/2-LB()/2; let hit=null, wall=false, at=L;
     for (const q of pins){
       if (q.down || q.gone) continue;
@@ -29,13 +32,13 @@ function makeBowling(){
       const ac=a-Math.sqrt(pc*pc-perp*perp); if (ac>=0 && ac<at){ hit=q; at=ac; }
     }
     if (dx){ const a=((dx>0 ? lx+LB()-PIN_R() : lx+PIN_R())-x)/dx; if (a>0 && a<at){ hit=null; wall=true; at=a; } }
-    if (!hit && !wall) return;
-    const cx=x+dx*at, cy=y+dy*at, vr=v*(1-0.4*at/L), dl=delay+at/PIN_V();
-    if (wall) return fly(cx, cy, -dx, dy, vr*0.6, dl, depth+1);
+    if (!hit && !wall){ mark(dy<0 && y+dy*at<PIN_R() ? Math.max(0,(PIN_R()-y)/dy) : at); return; }   // slides to a stop, or into the pit behind the deck
+    const cx=x+dx*at, cy=y+dy*at, vr=v*(1-0.4*at/L), dl=delay+at/spd; mark(at);
+    if (wall) return fly(p, cx, cy, -dx, dy, vr*0.6, dl, depth+1);
     let nx=hit.x-cx, ny=hit.y-cy; const nl=Math.hypot(nx,ny); nx/=nl; ny/=nl;
     const c=nx*dx+ny*dy; topple(hit, nx, ny, vr*c*PIN_PUSH, dl, depth+1);
     const px=dx-c*nx, py=dy-c*ny, pl=Math.hypot(px,py);
-    if (pl>1e-6) fly(cx, cy, px/pl, py/pl, vr*pl*PIN_PUSH, dl, depth+1);
+    if (pl>1e-6) fly(p, cx, cy, px/pl, py/pl, vr*pl*PIN_PUSH, dl, depth+1);
   }
   // Ball speed now: the average over the last fifth of a second (steady against camera noise) is the speed at the middle of
   // that window, so take off the slowing for half of it.
@@ -92,10 +95,13 @@ function makeBowling(){
           const w = p.wob != null && !p.down ? t-p.wob : -1, j = w >= 0 && w < 0.9 ? Math.sin(w*34)*0.02*K*(1-w/0.9) : 0;   // a wobbling pin rocks and settles
           drawPin(p.x+j, p.y, PIN_R()); continue;
         }
-        // harder hits topple faster and slide farther
-        const f = Math.min(1, p.fall.v/BALL_PUSH), pr = clamp((t-p.fall.t)/(0.5-0.25*f),0,1), e = 1-(1-pr)*(1-pr), sl = (0.1+0.25*f)*K*e;
-        const cx=p.x+p.fall.dx*sl, cy=p.y+p.fall.dy*sl, ang=Math.atan2(p.fall.dy,p.fall.dx);
-        ctx.save(); ctx.translate(cx,cy); ctx.rotate(ang); ctx.globalAlpha = t-p.fall.t > 1.2 ? 0.55 : 1;
+        // the pin topples (faster when hit harder) and slides along its route, tumbling while it moves
+        const path = p.fall.path, end = path[path.length-1], f = Math.min(1, p.fall.v/BALL_PUSH);
+        const pr = clamp((t-p.fall.t)/(0.3-0.15*f),0,1), e = 1-(1-pr)*(1-pr);
+        let cx=end.x, cy=end.y;
+        for (let i=1;i<path.length;i++) if (t < path[i].t){ const a=path[i-1], b=path[i], u=(t-a.t)/Math.max(1e-6,b.t-a.t); cx=a.x+(b.x-a.x)*u; cy=a.y+(b.y-a.y)*u; break; }
+        const ang = Math.atan2(p.fall.dy,p.fall.dx) + (Math.min(t,end.t)-p.fall.t)*5*f;
+        ctx.save(); ctx.translate(cx,cy); ctx.rotate(ang); ctx.globalAlpha = t-end.t > 1.2 ? 0.55 : 1;
         const len = PIN_R()*2*(1+e*0.5), wd = PIN_R()*2*(1-e*0.45);
         rrect(-len/2,-wd/2,len,wd,wd/2); ctx.fillStyle='#ffffff'; ctx.fill(); ctx.lineWidth=0.012*K; ctx.strokeStyle='#7d879c'; ctx.stroke();
         ctx.fillStyle='#c9302a'; ctx.fillRect(len*0.12,-wd/2,len*0.08,wd);
