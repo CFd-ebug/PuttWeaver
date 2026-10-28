@@ -353,6 +353,20 @@ function runManager(){
   el('mgrTrackBtn').addEventListener('click', () => send('track', {on: !(lastState && lastState.live && lastState.live.on)}));
   el('mgrTrackBtn2').addEventListener('click', () => send('track', {on: !(lastState && lastState.live && lastState.live.on)}));
   el('mgrFitBtn').addEventListener('click', () => send('fit', {on: !(lastState && lastState.setup && lastState.setup.fit)}));
+  // projection angles: the console keeps its own value for a moment so quick taps add up, and sends the absolute angle
+  const ksNow = {v: 0, h: 0, r: 0}; let ksEditAt = 0;
+  const ksLimit = 45, ksRound = x => Math.round(Math.max(-ksLimit, Math.min(ksLimit, x)) * 10) / 10;
+  const ksText = (ax, v) => !v ? '0°' : Math.abs(v).toFixed(1) + '° ' + (ax === 'v' ? (v > 0 ? 'top narrower' : 'top wider') : ax === 'h' ? (v > 0 ? 'right narrower' : 'right wider') : (v > 0 ? 'clockwise' : 'anticlockwise'));
+  const ksShow = () => { for (const ax of ['v', 'h', 'r']) el('mgrKs' + ax.toUpperCase()).textContent = ksText(ax, ksNow[ax]); };
+  const ksSend = (() => { const t = {}; return ax => { clearTimeout(t[ax]); t[ax] = setTimeout(() => send('ks', {axis: ax, v: ksNow[ax]}, true), 180); }; })();
+  el('mgrKs').addEventListener('click', e => {
+    const b = e.target.closest('[data-ks]'); if (!b) return; const [ax, d] = b.dataset.ks.split(',');
+    ksNow[ax] = ksRound(ksNow[ax] + Number(d)); ksEditAt = Date.now(); ksShow(); ksSend(ax);
+  });
+  // the sheet's corners by hand: tap them on the camera picture
+  let marks = null;
+  const markUi = () => { const b = el('mgrMarkBtn'); b.setAttribute('aria-pressed', String(!!marks)); b.textContent = marks ? 'Cancel marking (' + marks.length + ' of 4)' : 'Mark sheet corners'; };
+  el('mgrMarkBtn').addEventListener('click', () => { marks = marks ? null : []; markUi(); drawPv(); say('mgrCmdMsg2', marks ? 'Tap the four corners of the sheet in the camera picture.' : ''); });
   el('mgrHoldBtn').addEventListener('click', () => send('hold', {on: !(lastState && lastState.hold)}));
 
 
@@ -425,15 +439,18 @@ function runManager(){
       if (c.width !== pvImg.naturalWidth || c.height !== pvImg.naturalHeight){ c.width = pvImg.naturalWidth; c.height = pvImg.naturalHeight; }
       const g = c.getContext('2d'); g.drawImage(pvImg, 0, 0);
       if (su && su.quad){ g.strokeStyle = '#6f9bff'; g.lineWidth = 2; g.beginPath(); su.quad.forEach(([u, v], k) => k ? g.lineTo(u * c.width, v * c.height) : g.moveTo(u * c.width, v * c.height)); g.closePath(); g.stroke(); }
+      if (id === 'mgrPv' && su && su.sheet){ g.strokeStyle = '#ff5a5a'; g.lineWidth = 2; g.setLineDash([8, 5]); g.beginPath(); su.sheet.forEach(([u, v], k) => k ? g.lineTo(u * c.width, v * c.height) : g.moveTo(u * c.width, v * c.height)); g.closePath(); g.stroke(); g.setLineDash([]); }
+      if (id === 'mgrPv' && marks) for (const [u, v] of marks){ g.fillStyle = '#ff5a5a'; g.beginPath(); g.arc(u * c.width, v * c.height, 6, 0, 7); g.fill(); }
       if (id === 'mgrPv2' && dbg){ g.strokeStyle = '#ffffff'; g.lineWidth = 1.5; for (const [u, v] of dbg.blobs || []) g.strokeRect(u * c.width - 5, v * c.height - 5, 10, 10); }
       if (su && su.det){ g.strokeStyle = '#ff3b8d'; g.lineWidth = 2; g.beginPath(); g.arc(su.det[0] * c.width, su.det[1] * c.height, 9, 0, 7); g.stroke(); }
       c.dataset.seq = String(pvSeq);
     }
-    say('mgrPvNote', 'Updated ' + new Date().toLocaleTimeString() + '. Tap the ball to sample its color. The blue outline is the sheet as the calibration sees it.');
+    say('mgrPvNote', 'Updated ' + new Date().toLocaleTimeString() + '. Tap the ball to sample its color. The blue outline is the picture as the calibration sees it' + (su && su.sheet ? '; the red dashed outline is the sheet.' : '.'));
   }
   el('mgrPv').addEventListener('click', e => {
-    const r = el('mgrPv').getBoundingClientRect();
-    send('sampleat', {x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height});
+    const r = el('mgrPv').getBoundingClientRect(), x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+    if (marks){ marks.push([x, y]); if (marks.length === 4){ const pts = marks; marks = null; send('sheet', {pts}); say('mgrCmdMsg2', 'Sheet corners sent. Press Fit to the sheet.'); } markUi(); drawPv(); return; }
+    send('sampleat', {x, y});
   });
   function renderSetup(st){
     const su = st.setup; if (!su || tab !== 'setup') return;
@@ -442,7 +459,10 @@ function runManager(){
       const n = li.querySelector('.note'); if (n && note){ n.textContent = note.t || ''; n.dataset.tone = note.tone || ''; }
     };
     row('cam', su.src ? 'ok' : 'no', su.src ? su.label + (su.res ? ' · ' + su.res : '') : 'Off', {t: [su.notes.cam.t, su.lock].filter(Boolean).join(' '), tone: su.notes.cam.tone});
-    row('fit', 'ok', su.pin ? 'Corners adjusted' : 'Square to the screen', {t: su.fit ? 'Adjusting: the Host is showing its test card.' : ''});
+    const kz = !su.ks || (!su.ks.v && !su.ks.h && !su.ks.r);
+    row('fit', 'ok', (su.pin ? (kz ? 'Corners adjusted' : 'Angled') : 'Square to the screen') + (su.fitErr != null ? ' · fitted to the sheet' : ''), su.fit ? {t: 'Adjusting: the Host is showing its test card.'} : su.notes.fit);
+    if (su.ks && Date.now() - ksEditAt > 2500){ ksNow.v = su.ks.v; ksNow.h = su.ks.h; ksNow.r = su.ks.r; } ksShow();
+    el('mgrMarkClr').hidden = !su.sheetHand;
     const c = su.cal;
     row('cal', c ? (c.max != null && c.max > 1.5 ? 'warn' : 'ok') : 'no', c ? c.n + ' of ' + c.of + ' dots · ' + c.avg.toFixed(2) + ' in average' + (c.max != null ? ', ' + c.max.toFixed(2) + ' in worst' : '') : 'Not calibrated', su.notes.cal);
     row('color', su.sampled ? 'ok' : 'warn', (su.method === 'ref' ? 'Empty-sheet match' : 'Color only') + ' · ' + (su.sampled ? 'sampled' : 'not sampled yet'), su.notes.color);

@@ -27,10 +27,12 @@ function fitWithRejection(pts){
   return {H, use, res};
 }
 const avg = a => a.length ? a.reduce((x,y)=>x+y,0)/a.length : 0;
-async function runCalibration(){
-  if (!LIVE.src){ lpNote('lpCalNote', 'Start the camera first.', 'bad'); return; }
+async function runCalibration(opts){
+  opts = opts || {};
+  const inner = !!opts.inner, dotR = opts.big ? 0.26 : 0.16;
+  if (!LIVE.src){ lpNote('lpCalNote', 'Start the camera first.', 'bad'); return false; }
   if (!proj) enterProj();
-  projTest = false; stopLivePlay('Calibrating'); setCalibrating(true); lpNote('lpCalNote', 'Calibrating… keep the camera still.');
+  projTest = false; if (!inner){ stopLivePlay('Calibrating'); setCalibrating(true); } lpNote('lpCalNote', 'Calibrating… keep the camera still.');
   llog('Calibration started');
   try {
     LIVE.calib = {phase:'black'}; const base = await settleFrames(4);
@@ -38,17 +40,63 @@ async function runCalibration(){
     for (const fy of [0.1, 0.5, 0.9]) for (const fx of [0.07, 0.5, 0.93]) grid.push([fx*W, fy*D]);
     for (const fx of [0.28, 0.72]) for (const fy of [0.3, 0.7]) grid.push([fx*W, fy*D]);
     for (const g of grid){
-      LIVE.calib = {phase:'dot', p:g}; const cur = await settleFrames(2); const f = findDot(base, cur);
+      LIVE.calib = {phase:'dot', p:g, r:dotR}; const cur = await settleFrames(2); const f = findDot(base, cur);
       if (f) pts.push({cam:[f.u, f.v], sheet:g}); else llog(`Dot at ${g[0].toFixed(1)}, ${g[1].toFixed(1)} ft not seen`);
     }
     LIVE.calib = null;
-    if (pts.length < 4){ lpNote('lpCalNote', `Only ${pts.length} of ${grid.length} dots were seen. Check that the camera can see the whole projection, then try again.`, 'bad'); llog('Calibration failed'); return; }
+    if (pts.length < 4){ lpNote('lpCalNote', `Only ${pts.length} of ${grid.length} dots were seen. Check that the camera can see the whole projection, then try again.`, 'bad'); llog('Calibration failed'); return false; }
     const fit = fitWithRejection(pts);
-    if (!fit){ lpNote('lpCalNote', 'The dots didn’t form a usable pattern. Move the camera so it sees the projection more squarely.', 'bad'); return; }
-    setCal({Hcs:fit.H, n:fit.use.length, of:grid.length, fitAvg:avg(fit.res), fitMax:Math.max(...fit.res), at:Date.now(), W, D, src:LIVE.src, label:LIVE.label, pin:!!LIVE.pin});
+    if (!fit){ lpNote('lpCalNote', 'The dots didn’t form a usable pattern. Move the camera so it sees the projection more squarely.', 'bad'); return false; }
+    setCal({Hcs:fit.H, Hcs0:fit.H.slice(), pinAt:clonePin(LIVE.pin), n:fit.use.length, of:grid.length, fitAvg:avg(fit.res), fitMax:Math.max(...fit.res), at:Date.now(), W, D, src:LIVE.src, label:LIVE.label, pin:!!LIVE.pin});
     llog(`Calibrated with ${fit.use.length} of ${grid.length} dots: ${avg(fit.res).toFixed(2)} in average fit`);
-    await checkAccuracy(true);
-  } finally { LIVE.calib = null; setCalibrating(false); renderLiveStatus(); }
+    if (!opts.quick) await checkAccuracy(true);
+    return true;
+  } finally { LIVE.calib = null; if (!inner) setCalibrating(false); renderLiveStatus(); }
+}
+// ---- fit the picture to the sheet: find the sheet, read the dot pattern, and set the four corners so the picture lands on it ----
+const lpText = id => { const e = $(id); return e ? e.textContent : ''; };
+async function runAutoFit(){
+  if (!LIVE.src){ lpNote('lpFitNote', 'Start the camera first.', 'bad'); return false; }
+  if (!proj) enterProj();
+  projTest = false; if (LIVE.fitting) toggleFit(false);
+  stopLivePlay('Fitting the projection to the sheet'); setCalibrating(true);
+  const say = (m, tone) => lpNote('lpFitNote', m, tone);
+  llog('Auto-fit started'); say('Finding the sheet… keep the camera still.');
+  try {
+    let sheet = LIVE.sheetHand ? LIVE.sheet : null;
+    if (!sheet){
+      LIVE.calib = {phase:'black', noPin:true}; const b = await settleFrames(4);
+      LIVE.calib = {phase:'flood', noPin:true}; const w = await settleFrames(4);
+      LIVE.calib = null;
+      const f = findSheetQuad(w, b, LIVE.pw, LIVE.ph);
+      if (f.err){ say(f.err + ' Mark the four corners of the sheet on the camera picture instead.', 'bad'); llog('Auto-fit: ' + f.err); return false; }
+      if (f.fill < 0.88 || f.area < 0.03){ say('The bright area does not look like a four-sided sheet. Mark its four corners on the camera picture instead.', 'bad'); llog(`Auto-fit: sheet shape unclear (fill ${f.fill.toFixed(2)})`); LIVE.sheet = f.quad; liveSave(); REMOTE.key = ''; return false; }
+      if (f.edge){ say('The camera does not see all of the sheet: a corner is at the edge of the picture. Move the camera back, or mark the corners by hand.', 'bad'); llog('Auto-fit: sheet touches the edge of the camera picture'); LIVE.sheet = f.quad; liveSave(); REMOTE.key = ''; return false; }
+      sheet = f.quad; LIVE.sheet = sheet; LIVE.sheetHand = false; liveSave(); REMOTE.key = '';
+      llog('Sheet found in the camera picture');
+    }
+    let err = null;
+    for (let pass = 1; pass <= 2; pass++){
+      say(pass === 1 ? 'Reading the dot pattern…' : 'Checking the result…');
+      if (!await runCalibration({inner:true, quick:pass === 1, big:true})){ say('The dot pattern could not be read, so the picture was not changed. ' + lpText('lpCalNote'), 'bad'); return false; }
+      err = sheetFitError(sheet);
+      if (pass === 2 && err < 0.6) break;
+      const pin = pinForSheet(sheet);
+      if (!pin){ say('Could not work out the corners from the dots.', 'bad'); return false; }
+      if (!pinOnScreen(pin)){ say('The projector does not reach all four corners of the sheet. Move it back or zoom out, then try again.', 'bad'); llog('Auto-fit: a sheet corner is off the projector screen'); return false; }
+      bakePin(pin); err = sheetFitError(sheet);
+      llog(`Auto-fit pass ${pass}: corners within ${err.toFixed(2)} in`);
+    }
+    LIVE.fitInfo = {at:Date.now(), err:Math.round(err*100)/100};
+    say(`The picture now lands on the sheet: its corners are within ${err.toFixed(2)} in. Nudge the angles or corners if it needs it.`, err < 1.5 ? 'good' : 'bad');
+    llog(`Auto-fit done, ${err.toFixed(2)} in`); return true;
+  } finally { LIVE.calib = null; setCalibrating(false); renderLiveStatus(); REMOTE.key = ''; }
+}
+// the sheet's four corners by hand: tapped on the camera picture, in any order
+function setSheetCorners(pts){
+  if (!pts){ LIVE.sheet = null; LIVE.sheetHand = false; liveSave(); llog('Sheet corners cleared'); REMOTE.key = ''; renderLiveStatus(); return; }
+  if (!Array.isArray(pts) || pts.length !== 4 || pts.some(q => !Array.isArray(q) || !isFinite(q[0]) || !isFinite(q[1]))) throw new Error('Four corners are needed');
+  LIVE.sheet = orderQuad(pts.map(q => [clamp(Number(q[0]), 0, 1), clamp(Number(q[1]), 0, 1)])); LIVE.sheetHand = true; liveSave(); llog('Sheet corners marked by hand'); REMOTE.key = ''; renderLiveStatus();
 }
 async function checkAccuracy(inner){
   if (!LIVE.Hcs){ lpNote('lpCalNote', 'Calibrate first.', 'bad'); return; }
@@ -265,7 +313,8 @@ if (ROLE === 'host'){
   setTimeout(resumeAfterRestart, 1500);
 }
 async function startSource(kind){
-  stopSource(); lpNote('lpCamNote', '');
+  stopSource(); lpNote('lpCamNote', ''); LIVE.sheet = null; LIVE.sheetHand = false;     // the camera may have moved
+
   if (kind === 'sim'){
     if (!proj) enterProj();
     if (!simRender()){ lpNote('lpCamNote', 'The simulated camera needs WebGL, which isn’t available here.', 'bad'); return false; }
@@ -402,9 +451,9 @@ window.addEventListener('unhandledrejection', e => llog(`Script error: ${e.reaso
 function drawLiveOverlay(){
   if (LIVE.calib){
     const ph = LIVE.calib.phase;
-    ctx.fillStyle = ph === 'white' ? '#ffffff' : '#000000'; ctx.fillRect(-1, -1, W+2, D+2);
+    ctx.fillStyle = ph === 'white' || ph === 'flood' ? '#ffffff' : '#000000'; if (ph === 'flood') ctx.fillRect(-W, -D, 3*W, 3*D); else ctx.fillRect(-1, -1, W+2, D+2);
     if (ph === 'white' && LIVE.flash && !LIVE.flash.drawnAt) LIVE.flash.drawnAt = performance.now();
-    if (ph === 'dot'){ circle(LIVE.calib.p[0], LIVE.calib.p[1], 0.16*K); ctx.fillStyle = '#ffffff'; ctx.fill(); }
+    if (ph === 'dot'){ circle(LIVE.calib.p[0], LIVE.calib.p[1], (LIVE.calib.r || 0.16)*K); ctx.fillStyle = '#ffffff'; ctx.fill(); }
     return;
   }
   if (LIVE.sampling){
@@ -498,6 +547,7 @@ function drawPreview(){
   if (pc.width !== w || pc.height !== h){ pc.width = w; pc.height = h; }
   const g = pc.getContext('2d'); g.drawImage(LIVE.proc, 0, 0, w, h);
   if (LIVE.Hsc){ g.strokeStyle = '#6f9bff'; g.lineWidth = 2; g.beginPath(); [[0,0],[W,0],[W,D],[0,D]].forEach(([sx,sy],k) => { const [u,v] = camPx(sx, sy); const X = u/LIVE.pw*w, Y = v/LIVE.ph*h; k ? g.lineTo(X,Y) : g.moveTo(X,Y); }); g.closePath(); g.stroke(); }
+  if (LIVE.sheet){ g.strokeStyle = '#ff5a5a'; g.lineWidth = 2; g.setLineDash([6, 4]); g.beginPath(); LIVE.sheet.forEach(([u,v],k) => k ? g.lineTo(u*w, v*h) : g.moveTo(u*w, v*h)); g.closePath(); g.stroke(); g.setLineDash([]); }
   const b = LIVE.det && LIVE.det.best; if (b){ g.strokeStyle = '#2bff8a'; g.lineWidth = 2; g.beginPath(); g.arc(b.px/LIVE.pw*w, b.py/LIVE.ph*h, 7, 0, Math.PI*2); g.stroke(); }
 }
 
@@ -512,7 +562,7 @@ function renderLiveStatus(){
   const c = LIVE.cal, st = LIVE.settings || {};
   const rows = [
     ['Camera', LIVE.src === 'camera' ? `${LIVE.label} · ${st.width||'?'}×${st.height||'?'}` : LIVE.src === 'sim' ? 'Simulated camera' : LIVE.src === 'file' ? `Clip: ${LIVE.label}` : 'Off', LIVE.src ? 'ok' : 'no'],
-    ['Projection', LIVE.pin ? 'Corners adjusted' : 'Square to the screen', 'ok'],
+    ['Projection', LIVE.pin ? (ksZero(LIVE.ks) ? 'Corners adjusted' : 'Angled: ' + ['v','h','r'].filter(a => LIVE.ks[a]).map(a => ksText(a, LIVE.ks[a])).join(', ')) + (LIVE.fitInfo ? ' · fitted to the sheet' : '') : 'Square to the screen', 'ok'],
     ['Calibration', c ? `${c.n} dots · ${c.checkAvg != null ? `check ${c.checkAvg.toFixed(2)} in avg, ${c.checkMax.toFixed(2)} in worst` : `fit ${c.fitAvg.toFixed(2)} in`}` : 'Not calibrated', c ? (c.checkMax != null && c.checkMax > 1.5 ? 'warn' : 'ok') : 'no'],
     ['Ball', `${LIVE.method === 'ref' ? 'Empty-sheet match' : 'Color only'} · ${(LIVE.method === 'ref' ? LIVE.sig.sampled : LIVE.color.sampled) ? 'sampled' : 'not sampled yet'}`, (LIVE.method === 'ref' ? LIVE.sig.sampled : LIVE.color.sampled) ? 'ok' : 'warn'],
     ['Delay', `${Math.round(LIVE.latency*1000)} ms`, 'ok'],
@@ -520,6 +570,7 @@ function renderLiveStatus(){
   ];
   box.innerHTML = rows.map(([k, v, s]) => `<div class="lp-st" data-s="${s}"><span>${k}</span><b>${esc(v)}</b></div>`).join('');
   $('lpPlay').textContent = LIVE.on ? 'Pause tracking' : 'Start tracking';
+  for (const ax of ['v', 'h', 'r']){ const o = $('lpKs' + ax.toUpperCase()); if (o) o.textContent = ksText(ax, LIVE.ks[ax]); }
 }
 function showLivePanel(on){
   LIVE.panel = on; $('livePanel').hidden = !on;
@@ -555,7 +606,7 @@ function bindLivePanel(){
   $('lpZone').addEventListener('change', () => { LIVE.startZone = $('lpZone').value; liveSave(); });
   $('lpFile').addEventListener('change', () => { const f = $('lpFile').files[0]; if (f) loadClip(f); $('lpFile').value = ''; });
   $('lpLock').addEventListener('click', lockCamera);
-  $('lpCal').addEventListener('click', runCalibration);
+  $('lpCal').addEventListener('click', () => runCalibration());
   $('lpCheck').addEventListener('click', () => checkAccuracy(false));
   $('lpDelay').addEventListener('click', measureDelay);
   $('lpSample').addEventListener('click', sampleBall);
@@ -571,26 +622,31 @@ function bindLivePanel(){
   $('lpCopy').addEventListener('click', copyReport);
   $('lpSave').addEventListener('click', saveReport);
   $('lpFit').addEventListener('click', () => toggleFit());
+  $('lpAuto').addEventListener('click', () => runAutoFit());
+  $('lpMark').addEventListener('click', () => { LIVE.marking = LIVE.marking ? null : []; lpNote('lpFitNote', LIVE.marking ? 'Tap the four corners of the sheet in the camera picture above, one after another.' : ''); $('lpMark').textContent = LIVE.marking ? 'Cancel marking' : 'Mark sheet corners'; });
+  $('lpKs').addEventListener('click', e => { const b = e.target.closest('[data-ks]'); if (!b) return; const [ax, d] = b.dataset.ks.split(','); setKs(ax, (LIVE.ks[ax] || 0) + Number(d)); });
+  $('lpKsReset').addEventListener('click', resetKs);
   $('lpRot').addEventListener('click', rotatePin);
   $('lpFitReset').addEventListener('click', resetPin);
-  $('lpPreview').addEventListener('click', e => { if (!LIVE.pw) return; const r = $('lpPreview').getBoundingClientRect(); sampleAtPx(Math.round((e.clientX-r.left)/r.width*LIVE.pw), Math.round((e.clientY-r.top)/r.height*LIVE.ph)); });
+  $('lpPreview').addEventListener('click', e => { if (!LIVE.pw) return; const r = $('lpPreview').getBoundingClientRect();
+    if (LIVE.marking){ LIVE.marking.push([(e.clientX-r.left)/r.width, (e.clientY-r.top)/r.height]); if (LIVE.marking.length === 4){ const pts = LIVE.marking; LIVE.marking = null; $('lpMark').textContent = 'Mark sheet corners'; setSheetCorners(pts); lpNote('lpFitNote', 'Sheet corners marked. Press Fit to the sheet.', 'good'); } else lpNote('lpFitNote', LIVE.marking.length + ' of 4 corners marked.'); return; } sampleAtPx(Math.round((e.clientX-r.left)/r.width*LIVE.pw), Math.round((e.clientY-r.top)/r.height*LIVE.ph)); });
   $('btnLive').addEventListener('click', () => showLivePanel(true));
 }
 
 // ---- projector corner fit: drag the four corners until the projected test card is a true rectangle ----
-function rotatePin(){ if (!LIVE.pin) LIVE.pin = sheetCornersFrac(); LIVE.pin = [LIVE.pin[2], LIVE.pin[3], LIVE.pin[0], LIVE.pin[1]]; liveSave(); placeHandles(); llog('Projection rotated 180°; calibrate again'); renderLiveStatus(); }
-function resetPin(){ LIVE.pin = null; if (LIVE.fitting) LIVE.pin = sheetCornersFrac(); liveSave(); placeHandles(); llog('Corner fit reset; calibrate again'); renderLiveStatus(); }
-function setPinCorner(i, x, y){ if (!LIVE.pin) LIVE.pin = sheetCornersFrac(); LIVE.pin[i] = [clamp(x, -0.2, 1.2), clamp(y, -0.2, 1.2)]; placeHandles(); liveSave(); }
+function rotatePin(){ const p = LIVE.pin || sheetCornersFrac(); bakePin([p[2], p[3], p[0], p[1]]); llog('Projection rotated 180°'); }
+function resetPin(){ const id = LIVE.fitting ? sheetCornersFrac() : null; LIVE.ks = ksNew(); LIVE.pinBase = clonePin(id); pinSet(id); llog('Projection reset to square'); }
+function setPinCorner(i, x, y){ const p = clonePin(LIVE.pin || sheetCornersFrac()); p[i] = [clamp(x, -0.2, 1.2), clamp(y, -0.2, 1.2)]; bakePin(p); }
 function toggleFit(force){
   LIVE.fitting = force != null ? force : !LIVE.fitting;
-  if (LIVE.fitting && !LIVE.pin) LIVE.pin = sheetCornersFrac();
+  if (LIVE.fitting && !LIVE.pin) bakePin(sheetCornersFrac());
   projTest = LIVE.fitting;
   $('lpFit').textContent = LIVE.fitting ? 'Done adjusting' : 'Adjust corners';
   $('pinHandles').hidden = !LIVE.fitting; placeHandles();
   if (!LIVE.fitting){
     const id = sheetCornersFrac();
-    if (LIVE.pin && LIVE.pin.every((p,i) => Math.hypot(p[0]-id[i][0], p[1]-id[i][1]) < 0.002)) LIVE.pin = null;
-    liveSave(); llog(LIVE.pin ? 'Corner fit saved; calibrate again' : 'Corner fit unchanged'); renderLiveStatus();
+    if (LIVE.pin && LIVE.pin.every((p,i) => Math.hypot(p[0]-id[i][0], p[1]-id[i][1]) < 0.002)){ LIVE.ks = ksNew(); LIVE.pinBase = null; pinSet(null); }
+    liveSave(); llog(LIVE.pin ? 'Corner fit saved' : 'Corner fit unchanged'); renderLiveStatus();
   }
 }
 function placeHandles(){
@@ -599,7 +655,7 @@ function placeHandles(){
   if (!box.children.length) names.forEach((n, i) => {
     const h = document.createElement('div'); h.className = 'pin-h'; h.dataset.i = i; h.innerHTML = `<span>${n}</span>`; box.appendChild(h);
     h.addEventListener('pointerdown', e => { h.setPointerCapture(e.pointerId); h.dataset.drag = '1'; e.preventDefault(); });
-    h.addEventListener('pointermove', e => { if (!h.dataset.drag) return; const r = box.getBoundingClientRect(); LIVE.pin[i] = [clamp((e.clientX-r.left)/r.width, -0.2, 1.2), clamp((e.clientY-r.top)/r.height, -0.2, 1.2)]; placeHandles(); });
+    h.addEventListener('pointermove', e => { if (!h.dataset.drag) return; const r = box.getBoundingClientRect(); setPinCorner(i, (e.clientX-r.left)/r.width, (e.clientY-r.top)/r.height); });
     h.addEventListener('pointerup', () => { delete h.dataset.drag; liveSave(); });
   });
   [...box.children].forEach((h, i) => { h.style.left = (pts[i][0]*100) + '%'; h.style.top = (pts[i][1]*100) + '%'; });
