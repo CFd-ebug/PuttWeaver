@@ -10,7 +10,7 @@ const gameName = process.argv[2] || 'Paint Wars', method = process.argv[3] || 'r
   await page.getByRole('button', { name: new RegExp('^' + gameName) }).click();
   await page.locator('#btnLive').click(); await page.waitForTimeout(300);
   await page.selectOption('#lpSource', 'sim'); await page.locator('#lpStart').click(); await page.waitForTimeout(800);
-  await page.evaluate(() => { const L = window.__lab; L.LIVE.simYellow = true; L.simCam.noise = 0.04; });
+  await page.evaluate(q => { const L = window.__lab; L.LIVE.simYellow = true; L.simCam.noise = 0.04; if (q) L.simCam.quad = q; }, process.env.SIMQUAD ? JSON.parse(process.env.SIMQUAD) : null);   // SIMQUAD='[[x,y],...]' puts the camera at another angle
   await page.locator('#lpCal').click();
   await page.waitForFunction(() => { const L = window.__lab.LIVE; return L.cal && L.cal.checkAvg != null && !L.calib; }, null, { timeout: 90000 });
   await page.locator('#lpSample').click(); await page.waitForTimeout(1800);
