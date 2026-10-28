@@ -58,88 +58,102 @@ function makeBowling(){
   // Bowling-alley style shows after a putt. They move for under 2 s and then hold still until the next putt is set up,
   // so the camera sees a still sheet again before it photographs the empty sheet. Only navy, blue, magenta, red and white:
   // nothing near the ball's yellow, and nothing that turns a dark part of the picture bright.
-  const NAVY = 'rgba(20,30,64,0.92)', MAG = '#d6336c', BLUE = '#3b5bdb';
-  const ease = u => 1-Math.pow(1-clamp(u,0,1),3);
-  function slam(str, sub, a, at, color){   // a banner whose word lands big and settles, with a small line under it
-    const u = (a-at)/0.32; if (u < 0) return;
-    const y = headY() + (D-headY())*0.45, sz = 0.3*K*(1 + 1.1*(1-ease(u))), w = Math.max(LB()+0.5*K, tw(str, 0.3*K, {font:'display'})+0.5*K);
-    ctx.globalAlpha = clamp(u*3,0,1); banner(W/2-w/2, y-0.32*K, w, sub ? 0.86*K : 0.64*K);
-    txt(str, W/2, y, sz, {font:'display', color:color||'#ffffff', ls:.06});
-    if (sub && a-at > 0.35) txt(sub, W/2, y+0.36*K, 0.1*K, {font:'display', color:'#c5ccff', ls:.12});
-    ctx.globalAlpha = 1;
-  }
+  const NAVY = 'rgba(20,30,64,0.92)';
   const backOut = u => { u = clamp(u,0,1)-1; return 1 + 2.70158*u*u*u + 1.70158*u*u; };   // overshoots, then settles
-  // A ribbon banner: it unfurls from the middle, its notched tails fold out behind, the letters pop in one by one and a few
-  // sparkles twinkle. It flutters for under 2 s and then holds still.
-  function ribbon(str, sub, a){
-    const cx = W/2, cy = headY() + (D-headY())*0.45, BW = 3*K, BH = 0.56*K, damp = Math.max(0, 1-a/1.8);
-    const sx = backOut(a/0.35), arc = (0.08 + 0.03*Math.sin(a*7)*damp)*K, bow = u => -arc*Math.cos(Math.PI*u);   // u from -0.5 to 0.5
-    if (sx <= 0) return;
-    const tl = ease((a-0.25)/0.2)*0.5*K, drop = 0.16*K, ex = BW/2*sx;
+  const ease = u => 1-Math.pow(1-clamp(u,0,1),3);
+  // One ribbon look per result: band, tails, the fold between them, sparkle colors, and how it moves
+  const THEMES = {
+    strike:  {band:'#c2255c', tail:'#a61e4d', fold:'#5c0f2e', spark:['#ffffff','#f783ac']},   // magenta, sparkles
+    spare:   {band:'#3b5bdb', tail:'#364fc7', fold:'#1c2a6e', spark:['#ffffff','#91a7ff']},   // blue, sparkles
+    split:   {band:'#7048e8', tail:'#5f3dc4', fold:'#2f1a6b', tear:true},                     // purple, torn in two
+    gutter:  {band:'#6b7387', tail:'#596074', fold:'#2a2f3a', droop:true},                    // gray, sagging
+    wobbler: {band:'#c92a2a', tail:'#a51d1d', fold:'#5c1010', wobble:true},                   // red, wobbling
+    clear:   {band:'#1c2a6e', tail:'#16215a', fold:'#0b1233', spark:['#ffffff','#bac8ff']},   // navy
+    pick:    {band:'#495062', tail:'#3a404e', fold:'#1d2333', droop:true}                     // dark gray, sagging
+  };
+  // A ribbon banner: it unfurls from the middle, its notched tails fold out behind and the letters come in one by one. The
+  // theme decides the rest: sparkles, a tear down the middle, a sag, a wobble. It moves for under 2 s, then holds still.
+  function ribbon(str, sub, a, th){
+    const sx = backOut(a/0.35); if (sx <= 0) return;
+    const damp = Math.max(0, 1-a/1.8), o = {font:'display'};
+    let size = 0.38*K; const tot0 = tw(str, size, o); if (tot0 > W*0.62) size *= W*0.62/tot0;
+    const ws = [...str].map(c => tw(c, size, o)), tot = ws.reduce((m,w) => m+w, 0), BW = Math.max(3*K, tot + 0.9*K), BH = 0.56*K;
+    // Never over the resting ball: lit by the ribbon it stops looking like the ball, and the camera would think it was picked up.
+    const r = show.rest, rows = [headY() + (D-headY())*0.45, D-0.75*K, headY()-0.25*K];
+    const cy = rows.find(y => !r || Math.abs(r.y-y-0.05*K) > 0.8*K || Math.abs(r.x-W/2) > BW/2+0.65*K) ?? rows[0];
+    const cx = W/2 + (th.wobble ? Math.sin(a*14)*0.07*K*damp : 0);
+    const arc = th.droop ? -(0.04 + 0.1*ease(a/1.2))*K : th.wobble ? (0.06 + 0.12*Math.cos(a*11)*damp)*K : (0.08 + 0.03*Math.sin(a*7)*damp)*K;
+    const bow = u => -arc*Math.cos(Math.PI*u);   // u from -0.5 to 0.5; a positive arc lifts the middle
+    const tl = ease((a-0.25)/0.2)*0.5*K, drop = 0.16*K, ex = BW/2*sx, g = th.tear ? ease((a-0.55)/0.3)*0.08*K : 0;
     for (const side of [-1, 1]) if (tl > 0){   // tail behind each end, then the fold that joins it to the band
-      const x0 = cx + side*(ex-0.25*K), x1 = cx + side*(ex+tl), y0 = cy - BH/2 + drop, y1 = cy + BH/2 + drop, n = 0.14*K*Math.min(1, tl/(0.5*K));
-      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y0); ctx.lineTo(x1 - side*n, cy + drop); ctx.lineTo(x1, y1); ctx.lineTo(x0, y1); ctx.closePath();
-      ctx.fillStyle = '#a61e4d'; ctx.fill();
-      ctx.beginPath(); ctx.moveTo(cx + side*ex, cy + BH/2 + bow(0.5)); ctx.lineTo(cx + side*(ex-0.25*K), cy + BH/2 + drop); ctx.lineTo(cx + side*(ex-0.25*K), cy + BH/2 + bow(0.5)); ctx.closePath();
-      ctx.fillStyle = '#5c0f2e'; ctx.fill();
+      const sh = side*g, x0 = cx + sh + side*(ex-0.25*K), x1 = cx + sh + side*(ex+tl), y0 = cy - BH/2 + drop + bow(0.5), y1 = cy + BH/2 + drop + bow(0.5), n = 0.14*K*Math.min(1, tl/(0.5*K));
+      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y0); ctx.lineTo(x1 - side*n, (y0+y1)/2); ctx.lineTo(x1, y1); ctx.lineTo(x0, y1); ctx.closePath();
+      ctx.fillStyle = th.tail; ctx.fill();
+      ctx.beginPath(); ctx.moveTo(cx + sh + side*ex, cy + BH/2 + bow(0.5)); ctx.lineTo(cx + sh + side*(ex-0.25*K), y1); ctx.lineTo(cx + sh + side*(ex-0.25*K), cy + BH/2 + bow(0.5)); ctx.closePath();
+      ctx.fillStyle = th.fold; ctx.fill();
     }
-    ctx.beginPath(); const N = 24;   // the band, bowed up in the middle
-    for (let i=0;i<=N;i++){ const u = i/N-0.5; ctx[i ? 'lineTo' : 'moveTo'](cx + u*2*ex, cy - BH/2 + bow(u)); }
-    for (let i=N;i>=0;i--){ const u = i/N-0.5; ctx.lineTo(cx + u*2*ex, cy + BH/2 + bow(u)); }
-    ctx.closePath(); ctx.fillStyle = '#c2255c'; ctx.fill(); ctx.lineWidth = 0.02*K; ctx.strokeStyle = '#ffffff'; ctx.stroke();
-    const size = 0.38*K, o = {font:'display'}, ws = [...str].map(c => tw(c, size, o)), tot = ws.reduce((m,w) => m+w, 0);
+    // the band; a torn ribbon is drawn as two halves pulled apart along a zigzag
+    const N = 24, X = u => cx + u*2*ex + (th.tear ? (u < 0 ? -g : g) : 0);
+    const zig = (sh, down) => { const m = 6; for (let k=0;k<=m;k++){ const f = down ? k/m : 1-k/m; ctx.lineTo(cx + sh + (k%2 ? 0.05*K : -0.05*K)*(k>0 && k<m ? 1 : 0), cy - BH/2 + bow(0) + BH*f); } };
+    const half = (u0, u1, sh) => {
+      ctx.beginPath(); for (let i=0;i<=N;i++){ const u = u0+(u1-u0)*i/N; ctx[i ? 'lineTo' : 'moveTo'](cx + u*2*ex + sh, cy - BH/2 + bow(u)); }
+      if (th.tear && u1 === 0) zig(sh, true); else ctx.lineTo(cx + u1*2*ex + sh, cy + BH/2 + bow(u1));
+      for (let i=N;i>=0;i--){ const u = u0+(u1-u0)*i/N; ctx.lineTo(cx + u*2*ex + sh, cy + BH/2 + bow(u)); }
+      if (th.tear && u0 === 0) zig(sh, false);
+      ctx.closePath(); ctx.fillStyle = th.band; ctx.fill(); ctx.lineWidth = 0.02*K; ctx.strokeStyle = '#ffffff'; ctx.stroke();
+    };
+    if (th.tear){ half(-0.5, 0, -g); half(0, 0.5, g); } else half(-0.5, 0.5, 0);
     let x = cx - tot/2;
-    for (let i=0;i<str.length;i++){   // letters pop in one after another, riding the bow of the band
-      const k = (a - 0.3 - i*0.06)/0.28, sc = backOut(k), xc = x + ws[i]/2;
-      if (k > 0) txt(str[i], xc, cy + bow((xc-cx)/(2*ex||1)) + 0.01*K, size*sc, {font:'display', color:'#ffffff', halo:'#5c0f2e'});
-      x += ws[i];
+    for (let i=0;i<str.length;i++){   // the letters ride the bow of the band
+      const xc = x + ws[i]/2, u = (xc-cx)/(2*ex||1), sh = th.tear ? (xc < cx ? -g : g) : 0; x += ws[i];
+      if (th.droop){   // slump in from above, one by one, no bounce
+        const k = (a - 0.35 - i*0.09)/0.5; if (k <= 0) continue;
+        txt(str[i], xc, cy + bow(u) + 0.01*K - (1-ease(k))*0.35*K + Math.abs(i-(str.length-1)/2)*0.012*K*ease(k), size, {font:'display', color:'#e2e6ef', halo:th.fold, alpha:clamp(k*2,0,1)});
+      } else {   // pop in, overshoot and settle
+        const k = (a - 0.3 - i*0.06)/0.28, j = th.wobble ? Math.sin(a*12+i*0.9)*0.05*K*damp : 0; if (k <= 0) continue;
+        txt(str[i], xc + sh, cy + bow(u) + 0.01*K + j, size*backOut(k), {font:'display', color:'#ffffff', halo:th.fold});
+      }
     }
-    for (let i=0;i<8;i++){   // sparkles: four-point stars around the ribbon
+    if (th.spark) for (let i=0;i<8;i++){   // sparkles: four-point stars around the ribbon
       const st = 0.5 + i*0.11, v = Math.sin(Math.PI*clamp((a-st)/0.5,0,1)); if (v <= 0) continue;
       const ang = i*2.4, px = cx + Math.cos(ang)*(BW*0.55), py = cy + Math.sin(ang)*0.6*K, r = 0.14*K*v;
       ctx.beginPath(); for (let j=0;j<8;j++){ const rr = j%2 ? r*0.25 : r, t = j*Math.PI/4; ctx[j ? 'lineTo' : 'moveTo'](px + Math.cos(t)*rr, py + Math.sin(t)*rr); }
-      ctx.closePath(); ctx.fillStyle = i%2 ? '#ffffff' : '#f783ac'; ctx.fill();
+      ctx.closePath(); ctx.fillStyle = th.spark[i%2]; ctx.fill();
     }
-    if (sub && a > 0.9) pill(sub, cx, cy + 0.6*K, 0.1*K, NAVY, '#ffffff', {font:'display', ls:.12});
-  }
-  function wave(str, x, y, size, color, off){   // letters drawn one by one, each moved by off(i)
-    const o = {font:'display'}, w = tw(str, size, o); let cx = x - w/2;
-    for (let i=0;i<str.length;i++){ const cw = tw(str[i], size, o), d = off(i); txt(str[i], cx+cw/2+d.x, y+d.y, size, {font:'display', color}); cx += cw; }
+    if (sub && a > 0.9) pill(sub, W/2, cy + 0.6*K - (th.droop ? arc : 0), 0.1*K, NAVY, '#ffffff', {font:'display', ls:.12});
   }
   function drawShow(t){
     if (!show) return;
-    const a = t - show.t0, hy = headY(), deck = {x:W/2, y:hy-1.5*SP()*0.866}, lx = W/2-LB()/2;
-    if (show.kind === 'strike'){
-      if (a < 0.8){ const u = a/0.8; circle(deck.x, deck.y, ease(u)*1.3*K); ctx.lineWidth = 0.06*K*(1-u); ctx.strokeStyle = MAG; ctx.globalAlpha = 1-u; ctx.stroke(); ctx.globalAlpha = 1; }
+    const a = t - show.t0, hy = headY(), deck = {x:W/2, y:hy-1.5*SP()*0.866}, lx = W/2-LB()/2, k = show.kind;
+    if (k === 'strike'){
+      if (a < 0.8){ const u = a/0.8; circle(deck.x, deck.y, ease(u)*1.3*K); ctx.lineWidth = 0.06*K*(1-u); ctx.strokeStyle = '#d6336c'; ctx.globalAlpha = 1-u; ctx.stroke(); ctx.globalAlpha = 1; }
       if (a < 1.6) for (let i=0;i<12;i++){   // little pins burst out of the deck
         const ang = i/12*Math.PI*2 + 0.3, d = ease(a/1.3)*1.15*K, x = deck.x+Math.cos(ang)*d, y = deck.y+Math.sin(ang)*d*0.8, r = 0.05*K;
         ctx.save(); ctx.translate(x,y); ctx.rotate(ang + a*7); ctx.globalAlpha = clamp((1.6-a)/0.4,0,1);
         rrect(-r*1.6,-r*0.6,r*3.2,r*1.2,r*0.6); ctx.fillStyle = '#ffffff'; ctx.fill(); ctx.lineWidth = 0.01*K; ctx.strokeStyle = '#7d879c'; ctx.stroke();
         ctx.fillStyle = '#c9302a'; ctx.fillRect(r*0.4,-r*0.6,r*0.35,r*1.2); ctx.restore();
       }
-      ribbon('STRIKE!', 'HOLE IN ONE', a - 0.1);
-    } else if (show.kind === 'spare'){
+      ribbon('STRIKE!', 'HOLE IN ONE', a - 0.1, THEMES.strike);
+    } else if (k === 'spare'){
       const u = ease(a/0.4), x0 = lx+0.15*K, y0 = hy+0.35*K, x1 = lx+LB()-0.15*K, y1 = hy-3*SP()*0.866-0.3*K;   // the spare mark: a slash
-      ctx.lineCap = 'round'; ctx.lineWidth = 0.14*K; ctx.strokeStyle = BLUE; seg(x0, y0, x0+(x1-x0)*u, y0+(y1-y0)*u); ctx.stroke();
-      slam('SPARE', 'ALL TEN IN 2', a, 0.3);
-    } else if (show.kind === 'split'){
+      ctx.lineCap = 'round'; ctx.lineWidth = 0.14*K; ctx.strokeStyle = THEMES.spare.band; seg(x0, y0, x0+(x1-x0)*u, y0+(y1-y0)*u); ctx.stroke();
+      ribbon('SPARE', 'ALL TEN IN 2', a - 0.25, THEMES.spare);
+    } else if (k === 'split'){
       const st = pins.filter(p => !p.down && !p.gone), puls = a < 1.8 ? Math.sin(a*9)*0.25 : 0;
-      for (const p of st){ circle(p.x, p.y, PIN_R()*(1.55+puls)); ctx.lineWidth = 0.03*K; ctx.strokeStyle = MAG; ctx.stroke(); }
+      for (const p of st){ circle(p.x, p.y, PIN_R()*(1.55+puls)); ctx.lineWidth = 0.03*K; ctx.strokeStyle = THEMES.split.band; ctx.stroke(); }
       const L = st.reduce((m,p) => p.x < m.x ? p : m), R = st.reduce((m,p) => p.x > m.x ? p : m), u = ease((a-0.2)/0.4);
       if (u > 0){   // a crack between the outside pins
         ctx.beginPath(); ctx.moveTo(L.x, L.y); const n = 7;
         for (let i=1;i<=Math.ceil(n*u);i++){ const f = Math.min(i/n, u), j = i<n ? (i%2 ? 1 : -1)*0.06*K : 0; ctx.lineTo(L.x+(R.x-L.x)*f, L.y+(R.y-L.y)*f+j); }
         ctx.lineWidth = 0.025*K; ctx.strokeStyle = '#c9302a'; ctx.setLineDash([0.05*K, 0.03*K]); ctx.stroke(); ctx.setLineDash([]);
       }
-      slam(show.name + ' SPLIT', 'PICK IT UP FOR A SPARE', a, 0.4, '#ffd6e5');
-    } else if (show.kind === 'gutter'){
-      if (a < 1.5){ const on = Math.floor(a/0.25)%2 === 0; if (on){ ctx.fillStyle = 'rgba(201,48,42,0.55)'; ctx.fillRect(lx-GUT(), 0, GUT(), D); ctx.fillRect(lx+LB(), 0, GUT(), D); } }
-      const y = hy + (D-hy)*0.45, w = LB()+0.5*K; banner(W/2-w/2, y-0.32*K, w, 0.64*K);
-      wave('GUTTER', W/2, y, 0.26*K, '#aab3c8', i => ({x:0, y: ease((a-i*0.08)/0.6)*(0.04+0.025*Math.abs(i-2.5))*K}));
-    } else if (show.kind === 'wobbler'){
-      const y = hy + (D-hy)*0.45, w = LB()+0.5*K, damp = Math.max(0, 1-a/1.8); banner(W/2-w/2, y-0.32*K, w, 0.64*K);
-      wave('WOBBLER', W/2, y, 0.24*K, '#ffffff', i => ({x: Math.sin(a*16+i)*0.025*K*damp, y: Math.sin(a*12+i*0.9)*0.05*K*damp}));
-    }
+      ribbon(show.name + ' SPLIT', 'PICK IT UP FOR A SPARE', a - 0.35, THEMES.split);
+    } else if (k === 'gutter'){
+      if (a < 1.5 && Math.floor(a/0.25)%2 === 0){ ctx.fillStyle = 'rgba(201,48,42,0.55)'; ctx.fillRect(lx-GUT(), 0, GUT(), D); ctx.fillRect(lx+LB(), 0, GUT(), D); }
+      ribbon('GUTTER', 'STAY ON THE LANE', a, THEMES.gutter);
+    } else if (k === 'wobbler') ribbon('WOBBLER', 'SO CLOSE', a, THEMES.wobbler);
+    else if (k === 'clear') ribbon('ALL TEN', `IN ${putts} PUTTS`, a, THEMES.clear);
+    else if (k === 'pick') ribbon('PICK UP', 'HOLE SCORES 5', a, THEMES.pick);
   }
   function drawPin(x,y,r){ circle(x,y,r); ctx.fillStyle='#ffffff'; ctx.fill(); ctx.lineWidth=0.012*K; ctx.strokeStyle='#7d879c'; ctx.stroke(); circle(x,y,r*0.58); ctx.lineWidth=r*0.2; ctx.strokeStyle='#c9302a'; ctx.stroke(); circle(x,y,r*0.2); ctx.fillStyle='#d7dbe5'; ctx.fill(); }
   return {
@@ -216,9 +230,9 @@ function makeBowling(){
     onRest(p, why){
       putts++; const left = standing(); log.push({down:knocked, left});
       const note = why && !knocked ? ' '+WHY[why] : '', reached = trail.some(s => s.y < headY()+PIN_R());
-      const sh = kind => { show = {kind, t0:state.clock}; };
-      if (!left){ done='clear'; if (putts <= 2) sh(putts === 1 ? 'strike' : 'spare'); return {title: putts===1 ? 'Strike: hole in one' : putts===2 ? 'Spare: all ten in 2' : `All ten in ${putts}`, detail:`Hole score ${putts}.`, tone:'good'}; }
-      if (putts >= MAX_PUTTS){ done='pick'; return {title:'Pick up', detail:`${plural(left,'pin')} still standing after ${MAX_PUTTS} putts, so the hole scores 5.`+note, tone:'bad'}; }
+      const sh = kind => { show = {kind, t0:state.clock, rest:p}; };
+      if (!left){ done='clear'; sh(putts === 1 ? 'strike' : putts === 2 ? 'spare' : 'clear'); return {title: putts===1 ? 'Strike: hole in one' : putts===2 ? 'Spare: all ten in 2' : `All ten in ${putts}`, detail:`Hole score ${putts}.`, tone:'good'}; }
+      if (putts >= MAX_PUTTS){ done='pick'; sh('pick'); return {title:'Pick up', detail:`${plural(left,'pin')} still standing after ${MAX_PUTTS} putts, so the hole scores 5.`+note, tone:'bad'}; }
       const wobbled = pins.some(q => q.wob != null && !q.down && !q.gone), split = putts === 1 ? splitName() : null;
       if (split){ sh('split'); show.name = split; } else if (!knocked && gutter) sh('gutter'); else if (!knocked && wobbled) sh('wobbler');
       return {title: knocked ? plural(knocked,'pin') : gutter ? 'Gutter ball' : wobbled ? 'Wobbler' : why === 'short' || (p && !reached) ? 'Short' : 'No pins', detail:(split ? `A ${split} split. ` : '')+`${plural(left,'pin')} standing, ${plural(putts,'stroke')} so far.`+note, tone: knocked ? '' : 'bad'};
