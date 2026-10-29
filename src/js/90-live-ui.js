@@ -199,9 +199,9 @@ function ratioOf(d, k, r0, g0, b0){
   const rr = (d[k]+4)/(r0+4), gr = (d[k+1]+4)/(g0+4), br = (d[k+2]+4)/(b0+4), mm = (rr+gr)/2;
   return mm > 0.2 && br < 0.6*mm ? {bm:br/mm, q:gr/rr, m:mm} : null;   // soaks up blue: ball, not sheet
 }
-function finishSample(rat, px, hsvPx, where){
+function finishSample(rat, px, hsvPx, where, why){
   const okR = fitSig(rat), okC = fitColor(px.length >= 3 ? px : hsvPx);
-  if (!okR && !okC){ lpNote('lpColorNote', `No ball found ${where}. Make sure it’s there and lit by the projector, then try again.`, 'bad'); llog('Ball sample failed'); return false; }
+  if (!okR && !okC){ lpNote('lpColorNote', `No ball found ${where}. Make sure it’s there and lit by the projector, then try again.${why ? ' ' + why : ''}`, 'bad'); llog(`Ball sample failed ${where}${why ? ': ' + why : ''}`); return false; }
   liveSave(); syncLiveInputs(); renderLiveStatus();
   const g = LIVE.sig, c = LIVE.color, pc = v => Math.round(v*100) + '%';
   const a = okR ? `Ball sampled from ${rat.length} pixels. Against the bare sheet it reflects ${pc(g.m)} of the red and green light, and blue at only ${pc(g.bm)} of that level. Anything reflecting more than ${pc(g.cut)} is ignored.`
@@ -241,7 +241,7 @@ function sampleAtPx(x, y){
     if (q){ rat.push(q); px.push({h:hv[0], s:hv[1], v:hv[2]}); }
     if (hv[1] >= 0.3 && hv[2] >= 0.3) hsvPx.push({h:hv[0], s:hv[1], v:hv[2]});
   }
-  finishSample(rat, px, hsvPx, 'where you tapped');
+  finishSample(rat, px, hsvPx, 'where you tapped', `${ref ? 'The empty-sheet photo exists' : 'There is no empty-sheet photo yet'}; the tapped patch has ${hsvPx.length} of 81 pixels that are colorful and bright enough (needs 3).`);
 }
 async function runSweep(){
   if (!LIVE.Hcs){ lpNote('lpColorNote', 'Calibrate and sample the ball first.', 'bad'); return; }
