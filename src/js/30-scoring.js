@@ -39,6 +39,6 @@ function setOpt(gid, id, v){
 
 // results from simulated office-average putters at the default rig settings (see notes in each game)
 // 300 simulated holes per setting: 8 ft sheet, stimp 11, slight wrinkles, rails, office-average putter who always knows the answer
-const SIM = {map6:81, map3:49, tl5:87, tl2:58, pt1:48, pt3:95, tttW:47, tttD:43, tttL:10, tttAvg:'2.6', starsF:'2.8', starsB:'2.9', starsT:'3.8', starsS:'3.7', bowlPar:3, bowlAvg:'3.2', bowlStrike:2, galPar:3, galAvg:'2.9', seek6:80, seek3:41};
+const SIM = {map6:81, map3:49, tl5:87, tl2:58, pt1:48, pt3:95, tttW:47, tttD:43, tttL:10, tttAvg:'2.6', starsF:'2.8', starsB:'2.9', starsT:'3.8', starsS:'3.7', bowlPar:3, bowlAvg:'2.5', bowlStrike:17, galPar:3, galAvg:'2.9', seek6:80, seek3:41};
 
 
