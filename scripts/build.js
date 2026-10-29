@@ -55,7 +55,7 @@ const TEST_HOOK = `window.__lab = { tick, draw, putt, place, advance, startGame,
   select(i){ gameIdx=i; startGame(); }, set(k,v){ S[k]=v; }, setOpt(g,k,v){ setOpt(g,k,v); },
   get mode(){ return mode; }, get game(){ return game; }, get ball(){ return ball; },
   get W(){ return W; }, get D(){ return D; }, get TEE(){ return TEE; }, get shot(){ return shot; },
-  get LIVE(){ return LIVE; }, get lastResult(){ return lastResult; }, get clock(){ return state.clock; }, saveProblem, liveReport, homApply, enterProj, toggleFit, sheetCornersFrac, simCam, ksQuad, setKs, resetKs, bakePin, pinSet, rebaseHcs, findSheetQuad, pinForSheet, sheetFitError, runAutoFit, runCalibration, checkAccuracy, setSheetCorners, orderQuad, sheetPicture, toDev, FLOW, flowSelectStart, flowTick, flowStep, flowAfterHole, flowCompare };`;
+  get LIVE(){ return LIVE; }, get lastResult(){ return lastResult; }, get clock(){ return state.clock; }, saveProblem, liveReport, homApply, findDot, fitWithRejection, enterProj, toggleFit, sheetCornersFrac, simCam, ksQuad, setKs, resetKs, bakePin, pinSet, rebaseHcs, findSheetQuad, pinForSheet, sheetFitError, runAutoFit, runCalibration, checkAccuracy, setSheetCorners, orderQuad, sheetPicture, toDev, FLOW, flowSelectStart, flowTick, flowStep, flowAfterHole, flowCompare };`;
 
 // ---- offline wrapper: embedded fonts + full document skeleton ----
 const fontDir = path.join(root, 'assets', 'fonts');
