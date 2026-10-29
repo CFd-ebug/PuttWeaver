@@ -5,25 +5,50 @@ function setCalibrating(on){ stageSec.classList.toggle('calibrating', on); }
 async function settleFrames(n){ await sleep(Math.max(300, LIVE.latency*1000 + 220)); LIVE.waiters = []; return nextFrames(n); }
 
 // ---- geometric calibration: the projector shows dots one at a time, the camera finds each ----
+// Where is the one lit dot? The difference picture is box-filtered (a dot-sized window) before the brightest spot is taken, so a single hot pixel
+// or a thin glint cannot win. Only one dot is ever lit, so a second spot nearly as strong elsewhere means a reflection or a moving camera: no reading.
+let dotWhy = '';
 function findDot(base, cur){
-  const pw = LIVE.pw, ph = LIVE.ph; let mx = 0, mi = -1;
-  for (let i=0; i<cur.length; i++){ const d = cur[i]-base[i]; if (d > mx){ mx = d; mi = i; } }
-  if (mx < 22) return null;
-  const thr = mx*0.5, cx = mi % pw, cy = (mi-cx)/pw, R = Math.max(4, Math.round(pw*0.05));
-  let sw = 0, sx = 0, sy = 0, n = 0;
-  for (let y=Math.max(0,cy-R); y<Math.min(ph,cy+R+1); y++) for (let x=Math.max(0,cx-R); x<Math.min(pw,cx+R+1); x++){
-    const d = cur[y*pw+x]-base[y*pw+x]; if (d >= thr){ const w = d-thr+1; sw += w; sx += w*(x+0.5); sy += w*(y+0.5); n++; }
+  const pw = LIVE.pw, ph = LIVE.ph, h = Math.max(2, Math.round(pw*0.008)), n = pw*ph; dotWhy = '';
+  const I = new Float64Array((pw+1)*(ph+1));
+  for (let y=0; y<ph; y++){ let row = 0; for (let x=0; x<pw; x++){ const d = cur[y*pw+x]-base[y*pw+x]; row += d > 0 ? d : 0; I[(y+1)*(pw+1)+x+1] = I[y*(pw+1)+x+1] + row; } }
+  const box = (x, y) => { const x0 = Math.max(0, x-h), x1 = Math.min(pw, x+h+1), y0 = Math.max(0, y-h), y1 = Math.min(ph, y+h+1);
+    return (I[y1*(pw+1)+x1] - I[y0*(pw+1)+x1] - I[y1*(pw+1)+x0] + I[y0*(pw+1)+x0]) / ((x1-x0)*(y1-y0)); };
+  let best = 0, bx = 0, by = 0;
+  for (let y=h; y<ph-h; y+=2) for (let x=h; x<pw-h; x+=2){ const v = box(x, y); if (v > best){ best = v; bx = x; by = y; } }
+  if (best < 10){ dotWhy = `too faint (${best.toFixed(0)} of 10 needed)`; return null; }
+  const far = pw*0.08; let second = 0, sx2 = 0, sy2 = 0;
+  for (let y=h; y<ph-h; y+=3) for (let x=h; x<pw-h; x+=3){ if (Math.hypot(x-bx, y-by) < far) continue; const v = box(x, y); if (v > second){ second = v; sx2 = x; sy2 = y; } }
+  if (second > best*0.6){ dotWhy = `two spots (${(second/best*100).toFixed(0)}% as strong a second at ${(sx2/pw).toFixed(2)}, ${(sy2/ph).toFixed(2)})`; return null; }
+  const R = Math.max(4, Math.round(pw*0.05)); let lm = 0;
+  for (let y=Math.max(0,by-R); y<Math.min(ph,by+R+1); y++) for (let x=Math.max(0,bx-R); x<Math.min(pw,bx+R+1); x++){ const d = cur[y*pw+x]-base[y*pw+x]; if (d > lm) lm = d; }
+  const thr = lm*0.5; let sw = 0, sx = 0, sy = 0, c = 0;
+  for (let y=Math.max(0,by-R); y<Math.min(ph,by+R+1); y++) for (let x=Math.max(0,bx-R); x<Math.min(pw,bx+R+1); x++){
+    const d = cur[y*pw+x]-base[y*pw+x]; if (d >= thr){ const w = d-thr+1; sw += w; sx += w*(x+0.5); sy += w*(y+0.5); c++; }
   }
-  return sw && n >= 2 ? {u:sx/sw/pw, v:sy/sw/ph, peak:mx, n} : null;
+  if (!(sw && c >= 2)){ dotWhy = 'no solid spot'; return null; }
+  return {u:sx/sw/pw, v:sy/sw/ph, peak:best, n:c};
 }
-function fitWithRejection(pts){
-  let use = pts.slice(), H = null, res = [];
+// Fit the camera-to-sheet map even when some dots were wrong: try every set of four dots, keep the map that most dots agree with, refit on those.
+function fitWithRejection(pts, tol){
+  tol = tol || 2; const n = pts.length; if (n < 4) return null;
+  const cam = pts.map(p => p.cam), sh = pts.map(p => p.sheet);
+  const resid = H => pts.map(p => { const [x,y] = homApply(H, p.cam[0], p.cam[1]); const e = Math.hypot(x-p.sheet[0], y-p.sheet[1])*12; return isFinite(e) ? e : 1e9; });
+  let bestSet = null, bestScore = -1, bestErr = 1e18;
+  for (let a=0; a<n-3; a++) for (let b=a+1; b<n-2; b++) for (let c=b+1; c<n-1; c++) for (let d=c+1; d<n; d++){
+    const ix = [a,b,c,d], H = homFit(ix.map(i => cam[i]), ix.map(i => sh[i])); if (!H || H.some(v => !isFinite(v))) continue;
+    const r = resid(H); let k = 0, e = 0; for (const v of r) if (v < tol){ k++; e += v; }
+    if (k > bestScore || (k === bestScore && e < bestErr)){ bestScore = k; bestErr = e; bestSet = r.map(v => v < tol); }
+  }
+  if (!bestSet || bestScore < Math.min(n, 5)) return null;
+  let use = pts.filter((p, i) => bestSet[i]), H = null, res = [];
   for (let it=0; it<3; it++){
     H = homFit(use.map(p => p.cam), use.map(p => p.sheet)); if (!H) return null;
     res = use.map(p => { const [x,y] = homApply(H, p.cam[0], p.cam[1]); return Math.hypot(x-p.sheet[0], y-p.sheet[1])*12; });
     const worst = Math.max(...res), wi = res.indexOf(worst);
     if (worst > 1.5 && use.length > 5){ llog(`Dropped a dot that was ${worst.toFixed(1)} in off`); use.splice(wi, 1); } else break;
   }
+  const out = pts.filter(p => !use.includes(p)); for (const p of out) llog(`Dot at ${p.sheet[0].toFixed(1)}, ${p.sheet[1].toFixed(1)} ft did not agree with the others, left out`);
   return {H, use, res};
 }
 const avg = a => a.length ? a.reduce((x,y)=>x+y,0)/a.length : 0;
@@ -41,12 +66,14 @@ async function runCalibration(opts){
     for (const fx of [0.28, 0.72]) for (const fy of [0.3, 0.7]) grid.push([fx*W, fy*D]);
     for (const g of grid){
       LIVE.calib = {phase:'dot', p:g, r:dotR}; const cur = await settleFrames(2); const f = findDot(base, cur);
-      if (f) pts.push({cam:[f.u, f.v], sheet:g}); else llog(`Dot at ${g[0].toFixed(1)}, ${g[1].toFixed(1)} ft not seen`);
+      if (f){ pts.push({cam:[f.u, f.v], sheet:g}); llog(`Dot at ${g[0].toFixed(1)}, ${g[1].toFixed(1)} ft seen at ${f.u.toFixed(3)}, ${f.v.toFixed(3)}, strength ${f.peak.toFixed(0)}`); }
+      else llog(`Dot at ${g[0].toFixed(1)}, ${g[1].toFixed(1)} ft not used: ${dotWhy}`);
     }
     LIVE.calib = null;
     if (pts.length < 4){ lpNote('lpCalNote', `Only ${pts.length} of ${grid.length} dots were seen. Check that the camera can see the whole projection, then try again.`, 'bad'); llog('Calibration failed'); return false; }
     const fit = fitWithRejection(pts);
-    if (!fit){ lpNote('lpCalNote', 'The dots didn’t form a usable pattern. Move the camera so it sees the projection more squarely.', 'bad'); return false; }
+    if (!fit){ lpNote('lpCalNote', `The ${pts.length} dots seen didn’t line up with each other (reflections, a moving camera or changing exposure). Lock exposure, dim the room, keep the camera still and try again.`, 'bad'); llog('Calibration failed: the dots did not agree'); return false; }
+    if (Math.max(...fit.res) > 4){ lpNote('lpCalNote', `The dots only lined up to ${Math.max(...fit.res).toFixed(1)} in. Check that the camera sees the whole projection and nothing moves, then try again.`, 'bad'); llog('Calibration failed: poor fit'); return false; }
     setCal({Hcs:fit.H, Hcs0:fit.H.slice(), pinAt:clonePin(LIVE.pin), n:fit.use.length, of:grid.length, fitAvg:avg(fit.res), fitMax:Math.max(...fit.res), at:Date.now(), W, D, src:LIVE.src, label:LIVE.label, pin:!!LIVE.pin});
     llog(`Calibrated with ${fit.use.length} of ${grid.length} dots: ${avg(fit.res).toFixed(2)} in average fit`);
     if (!opts.quick) await checkAccuracy(true);
@@ -172,9 +199,9 @@ function ratioOf(d, k, r0, g0, b0){
   const rr = (d[k]+4)/(r0+4), gr = (d[k+1]+4)/(g0+4), br = (d[k+2]+4)/(b0+4), mm = (rr+gr)/2;
   return mm > 0.2 && br < 0.6*mm ? {bm:br/mm, q:gr/rr, m:mm} : null;   // soaks up blue: ball, not sheet
 }
-function finishSample(rat, px, hsvPx, where){
+function finishSample(rat, px, hsvPx, where, why){
   const okR = fitSig(rat), okC = fitColor(px.length >= 3 ? px : hsvPx);
-  if (!okR && !okC){ lpNote('lpColorNote', `No ball found ${where}. Make sure it’s there and lit by the projector, then try again.`, 'bad'); llog('Ball sample failed'); return false; }
+  if (!okR && !okC){ lpNote('lpColorNote', `No ball found ${where}. Make sure it’s there and lit by the projector, then try again.${why ? ' ' + why : ''}`, 'bad'); llog(`Ball sample failed ${where}${why ? ': ' + why : ''}`); return false; }
   liveSave(); syncLiveInputs(); renderLiveStatus();
   const g = LIVE.sig, c = LIVE.color, pc = v => Math.round(v*100) + '%';
   const a = okR ? `Ball sampled from ${rat.length} pixels. Against the bare sheet it reflects ${pc(g.m)} of the red and green light, and blue at only ${pc(g.bm)} of that level. Anything reflecting more than ${pc(g.cut)} is ignored.`
@@ -214,7 +241,7 @@ function sampleAtPx(x, y){
     if (q){ rat.push(q); px.push({h:hv[0], s:hv[1], v:hv[2]}); }
     if (hv[1] >= 0.3 && hv[2] >= 0.3) hsvPx.push({h:hv[0], s:hv[1], v:hv[2]});
   }
-  finishSample(rat, px, hsvPx, 'where you tapped');
+  finishSample(rat, px, hsvPx, 'where you tapped', `${ref ? 'The empty-sheet photo exists' : 'There is no empty-sheet photo yet'}; the tapped patch has ${hsvPx.length} of 81 pixels that are colorful and bright enough (needs 3).`);
 }
 async function runSweep(){
   if (!LIVE.Hcs){ lpNote('lpColorNote', 'Calibrate and sample the ball first.', 'bad'); return; }
