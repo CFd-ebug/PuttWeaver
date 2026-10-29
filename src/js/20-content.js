@@ -9,7 +9,11 @@ const PLACE_TIERS = [
     ['Buenos Aires','','Argentina',-34.60,-58.38], ['Istanbul','','Türkiye',41.01,28.98], ['Moscow','','Russia',55.76,37.62],
     ['London','','United Kingdom',51.51,-0.13], ['Los Angeles','California','USA',34.05,-118.24], ['Chicago','Illinois','USA',41.88,-87.63],
     ['Sydney','New South Wales','Australia',-33.87,151.21], ['Toronto','Ontario','Canada',43.65,-79.38], ['Rome','','Italy',41.90,12.50],
-    ['Madrid','','Spain',40.42,-3.70], ['Berlin','','Germany',52.52,13.40]
+    ['Madrid','','Spain',40.42,-3.70], ['Berlin','','Germany',52.52,13.40],
+    ['Paris','','France',48.86,2.35], ['Seoul','','South Korea',37.57,126.98], ['Hong Kong','','China',22.32,114.17],
+    ['Bangkok','','Thailand',13.76,100.50], ['Dubai','','United Arab Emirates',25.20,55.27], ['Rio de Janeiro','','Brazil',-22.91,-43.17],
+    ['San Francisco','California','USA',37.77,-122.42], ['Miami','Florida','USA',25.76,-80.19], ['Seattle','Washington','USA',47.61,-122.33],
+    ['Washington, D.C.','','USA',38.91,-77.04]
   ]},
   {label:'Medium', color:'#c9a8ff', list:[
     ['Nairobi','','Kenya',-1.29,36.82], ['Johannesburg','','South Africa',-26.20,28.05], ['Singapore','','Singapore',1.35,103.82],
@@ -18,7 +22,11 @@ const PLACE_TIERS = [
     ['Havana','','Cuba',23.11,-82.37], ['Athens','','Greece',37.98,23.73], ['Kabul','','Afghanistan',34.56,69.21],
     ['Melbourne','Victoria','Australia',-37.81,144.96], ['Lagos','','Nigeria',6.52,3.38], ['Manila','','Philippines',14.60,120.98],
     ['Jakarta','','Indonesia',-6.21,106.85], ['Salt Lake City','Utah','USA',40.76,-111.89], ['Hilo','Hawaii','USA',19.72,-155.08],
-    ['Machu Picchu','','Peru',-13.16,-72.55], ['Mount Everest','','Nepal and China',27.99,86.93]
+    ['Machu Picchu','','Peru',-13.16,-72.55], ['Mount Everest','','Nepal and China',27.99,86.93],
+    ['Lima','','Peru',-12.05,-77.04], ['Caracas','','Venezuela',10.48,-66.90], ['Reykjavík','','Iceland',64.15,-21.94],
+    ['Oslo','','Norway',59.91,10.75], ['Kyiv','','Ukraine',50.45,30.52], ['Tehran','','Iran',35.69,51.39],
+    ['Perth','Western Australia','Australia',-31.95,115.86], ['Anchorage','Alaska','USA',61.22,-149.90], ['Montreal','Quebec','Canada',45.50,-73.57],
+    ['Dakar','','Senegal',14.72,-17.47]
   ]},
   {label:'Hard', color:'#ff9ab8', list:[
     ['Lyon','','France',45.76,4.84], ['Porto','','Portugal',41.15,-8.61], ['Kraków','','Poland',50.06,19.94],
@@ -27,7 +35,11 @@ const PLACE_TIERS = [
     ['Dhaka','','Bangladesh',23.81,90.41], ['Karachi','','Pakistan',24.86,67.01], ['Kinshasa','','DR Congo',-4.44,15.27],
     ['Addis Ababa','','Ethiopia',9.03,38.74], ['Nome','Alaska','USA',64.50,-165.41], ['Victoria Falls','','Zambia and Zimbabwe',-17.92,25.86],
     ['Mount Kilimanjaro','','Tanzania',-3.07,37.35], ['Angkor Wat','','Cambodia',13.41,103.87], ['Petra','','Jordan',30.33,35.44],
-    ['Uluru','Northern Territory','Australia',-25.34,131.04], ['Galápagos Islands','','Ecuador',-0.74,-90.32]
+    ['Uluru','Northern Territory','Australia',-25.34,131.04], ['Galápagos Islands','','Ecuador',-0.74,-90.32],
+    ['Almaty','','Kazakhstan',43.24,76.95], ['Baku','','Azerbaijan',40.41,49.87], ['Accra','','Ghana',5.60,-0.19],
+    ['Luanda','','Angola',-8.84,13.23], ['La Paz','','Bolivia',-16.50,-68.12], ['Quito','','Ecuador',-0.18,-78.47],
+    ['Darwin','Northern Territory','Australia',-12.46,130.84], ['Fairbanks','Alaska','USA',64.84,-147.72], ['Chengdu','Sichuan','China',30.57,104.07],
+    ['Seville','','Spain',37.39,-5.98]
   ]},
   {label:'Expert', color:'#ff6b6b', list:[
     ['Ushuaia','Tierra del Fuego','Argentina',-54.80,-68.30], ['Nuuk','','Greenland',64.18,-51.72], ['Iqaluit','Nunavut','Canada',63.75,-68.52],
@@ -36,7 +48,11 @@ const PLACE_TIERS = [
     ['Timbuktu','','Mali',16.77,-3.01], ['Lamu','','Kenya',-2.27,40.90], ['Leh','Ladakh','India',34.16,77.58],
     ['Thimphu','','Bhutan',27.47,89.64], ['Luang Prabang','','Laos',19.89,102.13], ['Asmara','','Eritrea',15.32,38.93],
     ['Antananarivo','','Madagascar',-18.88,47.51], ['Samarkand','','Uzbekistan',39.65,66.96], ['Tbilisi','','Georgia',41.72,44.79],
-    ['Mount Katahdin','Maine','USA',45.90,-68.92], ['Easter Island','','Chile',-27.11,-109.35]
+    ['Mount Katahdin','Maine','USA',45.90,-68.92], ['Easter Island','','Chile',-27.11,-109.35],
+    ['Ouagadougou','','Burkina Faso',12.37,-1.52], ['Nouakchott','','Mauritania',18.09,-15.98], ['Yakutsk','Sakha','Russia',62.03,129.73],
+    ['Magadan','','Russia',59.56,150.80], ['Hobart','Tasmania','Australia',-42.88,147.33], ['Kashgar','Xinjiang','China',39.47,75.99],
+    ['Tamanrasset','','Algeria',22.79,5.52], ['Iquitos','','Peru',-3.75,-73.25], ['Utqiaġvik','Alaska','USA',71.29,-156.79],
+    ['Socotra','','Yemen',12.46,53.82]
   ]}
 ].map(t => ({label:t.label, color:t.color, list:t.list.map(([name,region,country,lat,lon]) => ({name, where: region ? region+', '+country : country, country, lat, lon}))}));
 
